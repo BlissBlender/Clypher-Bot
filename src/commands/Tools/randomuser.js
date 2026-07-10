@@ -1,8 +1,8 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
 import { handleInteractionError, replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
-import { getColor } from '../../config/bot.js';
+
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 export default {
@@ -89,17 +89,17 @@ try {
                 .map(role => role.toString())
 .slice(0, 10);
             
-            const embed = successEmbed(
-                '🎲 Random User Selected',
-                shouldMention ? `${selectedMember}` : `**${user.username}**`
-            )
-            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .addFields(
-                { name: 'Username', value: user.username, inline: true },
-                { name: 'Bot', value: user.bot ? 'Yes' : 'No', inline: true },
-                { name: `Roles (${roles.length})`, value: roles.length > 0 ? roles.slice(0, 5).join('') + (roles.length > 5 ? `+${roles.length - 5} more` : '') : 'No roles', inline: false }
-            )
-            .setColor('primary');
+            const embed = createEmbed({
+                title: '🎲 Random User Selected',
+                description: shouldMention ? `${selectedMember}` : `**${user.username}**`,
+                color: 'success',
+                thumbnail: user.displayAvatarURL({ dynamic: true, size: 256 }),
+                fields: [
+                    { name: 'Username', value: user.username, inline: true },
+                    { name: 'Bot', value: user.bot ? 'Yes' : 'No', inline: true },
+                    { name: `Roles (${roles.length})`, value: roles.length > 0 ? roles.slice(0, 5).join('') + (roles.length > 5 ? `+${roles.length - 5} more` : '') : 'No roles', inline: false },
+                ],
+            });
             
             const row = new ActionRowBuilder()
                 .addComponents(
@@ -155,17 +155,17 @@ const collector = response.createMessageComponentCollector({ filter, time: 30000
                         .map(r => r.toString())
                         .slice(0, 10);
                     
-                    const newEmbed = successEmbed(
-                        '🎲 Random User Selected',
-                        shouldMention ? `${newSelectedMember}` : `**${newUser.username}**`
-                    )
-                    .setThumbnail(newUser.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .addFields(
-                        { name: 'Username', value: newUser.username, inline: true },
-                        { name: 'Bot', value: newUser.bot ? 'Yes' : 'No', inline: true },
-                        { name: `Roles (${newRoles.length})`, value: newRoles.length > 0 ? newRoles.slice(0, 5).join('') + (newRoles.length > 5 ? `+${newRoles.length - 5} more` : '') : 'No roles', inline: false }
-                    )
-                    .setColor(newSelectedMember.displayHexColor || getColor('info'));
+                    const newEmbed = createEmbed({
+                        title: '🎲 Random User Selected',
+                        description: shouldMention ? `${newSelectedMember}` : `**${newUser.username}**`,
+                        color: newSelectedMember.displayHexColor || 'info',
+                        thumbnail: newUser.displayAvatarURL({ dynamic: true, size: 256 }),
+                        fields: [
+                            { name: 'Username', value: newUser.username, inline: true },
+                            { name: 'Bot', value: newUser.bot ? 'Yes' : 'No', inline: true },
+                            { name: `Roles (${newRoles.length})`, value: newRoles.length > 0 ? newRoles.slice(0, 5).join('') + (newRoles.length > 5 ? `+${newRoles.length - 5} more` : '') : 'No roles', inline: false },
+                        ],
+                    });
                     
                     await i.update({
                         content: shouldMention ? `${newSelectedMember}, you've been chosen!` : null,
