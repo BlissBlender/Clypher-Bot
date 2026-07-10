@@ -101,8 +101,10 @@ export async function getLeaderboard(client, guildId, limit = 10) {
       }
     }
 
-    // Fallback: only iterate guild members if the DB index failed, not if it returned empty
-    if (dbListFailed && levelUserIds.length === 0) {
+    // Fallback: iterate guild members when the DB index is unavailable or empty
+    // (in-memory DBs like the Render fallback don't support .list(), so we need
+    //  to scan all guild members to build the leaderboard)
+    if (!levelUserIds.length) {
       const members = await guild.members.fetch().catch((error) => {
         logger.error(`Failed to fetch members for guild ${guildId}:`, error);
         return new Map();
