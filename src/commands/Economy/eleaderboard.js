@@ -18,34 +18,62 @@ export default {
 
             logger.debug(`[ECONOMY] Leaderboard requested`, { guildId });
 
-            const prefix = `economy:${guildId}:`;
-
-            let allKeys = await client.db.list(prefix);
-
-            if (!Array.isArray(allKeys)) {
-                allKeys = [];
-            }
-
-            if (allKeys.length === 0) {
-                throw createError(
-                    "No economy data found",
-                    ErrorTypes.VALIDATION,
-                    "No economy data found for this server."
-                );
-            }
+            const economyPrefix = `economy:${guildId}:`;
 
             let allUserData = [];
 
-            for (const key of allKeys) {
-                const userId = key.replace(prefix, "");
-                const userData = await client.db.get(key);
-
-                if (userData) {
-                    allUserData.push({
-                        userId: userId,
-                        net_worth: (userData.wallet || 0) + (userData.bank || 0),
-                    });
+            // Try indexed DB listing first
+            let allKeys = [];
+            let listed = false;
+            if (client.db?.list && typeof client.db.list === 'function') {
+                try {
+                    const keys = await client.db.list(economyPrefix);
+                    if (Array.isArray(keys)) {
+                        allKeys = keys;
+                        listed = true;
+                    }
+                } catch (listError) {
+                    logger.warn(`Failed to list economy keys for guild ${guildId}:`, listError.message);
                 }
+            }
+
+            if (listed && allKeys.length > 0) {
+                // Use indexed keys
+                for (const key of allKeys) {
+                    const userId = key.replace(economyPrefix, '');
+                    const userData = await client.db.get(key);
+                    if (userData) {
+                        allUserData.push({
+                            userId,
+                            net_worth: (userData.wallet || 0) + (userData.bank || 0),
+                        });
+                    }
+                }
+            } else {
+                // Fallback: scan all guild members (in-memory DB doesn't support .list())
+                try {
+                    const members = await interaction.guild.members.fetch().catch(() => new Map());
+                    for (const [userId] of members) {
+                        if (interaction.guild.members.cache.get(userId)?.user.bot) continue;
+                        const userData = await client.db.get(`${economyPrefix}${userId}`);
+                        if (userData && ((userData.wallet || 0) > 0 || (userData.bank || 0) > 0)) {
+                            allUserData.push({
+                                userId,
+                                net_worth: (userData.wallet || 0) + (userData.bank || 0),
+                            });
+                        }
+                    }
+                } catch (memberError) {
+                    logger.error(`Failed to fetch members for economy leaderboard in guild ${guildId}:`, memberError);
+                }
+            }
+
+            if (allUserData.length === 0) {
+                throw createError(
+                    'No economy data found',
+                    ErrorTypes.VALIDATION,
+                    'No economy data found for this server.'
+                );
             }
 
             allUserData.sort((a, b) => b.net_worth - a.net_worth);
