@@ -1,6 +1,42 @@
 import { logger } from '../utils/logger.js';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
 
 const COUNTING_GAME_KEY_PREFIX = 'countingGame:';
+
+// ── File-based persistence (survives Render free-tier restarts) ──
+const DATA_DIR = path.resolve('data');
+const COUNTING_DATA_FILE = path.join(DATA_DIR, 'counting-game.json');
+
+function dataFileExists() {
+  try {
+    return existsSync(COUNTING_DATA_FILE);
+  } catch {
+    return false;
+  }
+}
+
+async function loadCountingFile() {
+  try {
+    if (dataFileExists()) {
+      const raw = await readFile(COUNTING_DATA_FILE, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (error) {
+    logger.warn('Could not load counting game data file:', error.message);
+  }
+  return {};
+}
+
+async function saveCountingFile(data) {
+  try {
+    await mkdir(DATA_DIR, { recursive: true });
+    await writeFile(COUNTING_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    logger.warn('Could not save counting game data file:', error.message);
+  }
+}
 
 const COUNTING_SYSTEMS = {
   decimal: {
@@ -218,7 +254,22 @@ export function matchesCountingFormat(content, systemKey) {
 export async function getCountingGameConfig(client, guildId) {
   try {
     const rawState = await client.db.get(getStorageKey(guildId));
-    return normalizeCountingGame(rawState);
+    if (rawState && rawState.enabled) {
+      return normalizeCountingGame(rawState);
+    }
+
+    // In-memory DB returned empty / disabled — try file backup
+    // (survives Render free-tier restarts where in-memory state is lost)
+    const fileData = await loadCountingFile();
+    const guildData = fileData[guildId];
+    if (guildData && guildData.enabled) {
+      // Restore into client.db so future reads are fast
+      await client.db.set(getStorageKey(guildId), guildData);
+      logger.info('Counting game config restored from file backup for guild', guildId);
+      return normalizeCountingGame(guildData);
+    }
+
+    return normalizeCountingGame();
   } catch (error) {
     logger.error('Failed to load counting game config:', { guildId, error });
     return normalizeCountingGame();
@@ -228,6 +279,12 @@ export async function getCountingGameConfig(client, guildId) {
 export async function saveCountingGameConfig(client, guildId, state) {
   const normalized = normalizeCountingGame(state);
   await client.db.set(getStorageKey(guildId), normalized);
+
+  // Persist to file so the config survives in-memory restarts
+  const fileData = await loadCountingFile();
+  fileData[guildId] = normalized;
+  await saveCountingFile(fileData);
+
   return normalized;
 }
 

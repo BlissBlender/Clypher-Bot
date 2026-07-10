@@ -141,6 +141,9 @@ dist
 .breakpoints
 .git.backup.*
 
+# Runtime data files (auto-generated, survives in-memory restarts)
+data/
+
 # Database backup artifacts
 backups/
 *.dump
