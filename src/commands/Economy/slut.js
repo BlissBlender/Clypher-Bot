@@ -2,10 +2,9 @@ import { SlashCommandBuilder } from 'discord.js';
 import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-
-const SLUT_COOLDOWN = 45 * 60 * 1000;
 
 const SLUT_ACTIVITIES = [
     { name: "Cam Stream", min: 120, max: 450, risk: 0.2 },
@@ -102,6 +101,7 @@ function resolveOutcome(activity, wallet) {
 }
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('slut')
         .setDescription('Take a risky provocative job for random payout or loss'),
@@ -129,8 +129,8 @@ export default {
 
             const lastSlut = userData.lastSlut || 0;
 
-            if (now - lastSlut < SLUT_COOLDOWN) {
-                const remainingTime = lastSlut + SLUT_COOLDOWN - now;
+            if (now - lastSlut < botConfig.economy.cooldowns.slut) {
+                const remainingTime = lastSlut + botConfig.economy.cooldowns.slut - now;
                 throw createError(
                     "Slut cooldown active",
                     ErrorTypes.RATE_LIMIT,
@@ -179,7 +179,7 @@ export default {
             const embed = createEmbed({
                 title: outcome.title,
                 description: summaryLines.join('\n'),
-                color: outcome.delta >= 0 ? 'success' : 'error',
+                color: outcome.delta >= 0 ? 'money' : 'spending',
                 timestamp: true
             });
 

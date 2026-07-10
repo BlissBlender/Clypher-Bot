@@ -74,6 +74,11 @@ export async function loadCommands(client) {
                 logger.warn(`Command at ${filePath} is missing required "data" or "execute" property.`);
                 continue;
             }
+
+            if (command.skipRegistration) {
+                logger.debug(`Skipping consolidated child command: ${command.data.name} (${normalizedPath})`);
+                continue;
+            }
             
             command.category = category;
             command.filePath = normalizedPath;

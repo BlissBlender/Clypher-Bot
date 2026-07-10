@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
-import { handleInteractionError, TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getLeaderboard, getLevelingConfig, getXpForLevel } from '../../services/leveling.js';
+import { getColor } from '../../config/bot.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
@@ -21,7 +22,7 @@ export default {
         await InteractionHelper.safeEditReply(interaction, {
           embeds: [
             new EmbedBuilder()
-              .setColor('#f1c40f')
+              .setColor(getColor('warning'))
               .setDescription('The leveling system is currently disabled on this server.')
           ],
           flags: MessageFlags.Ephemeral
@@ -32,7 +33,7 @@ export default {
       const leaderboard = await getLeaderboard(client, interaction.guildId, 10);
 
       if (leaderboard.length === 0) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
           'No leaderboard data found',
           ErrorTypes.DATABASE,
           'No level data found yet. Start chatting to gain XP!'
@@ -41,7 +42,7 @@ export default {
 
       const embed = new EmbedBuilder()
         .setTitle('Level Leaderboard')
-        .setColor('#2ecc71')
+        .setColor(getColor('success'))
         .setDescription("Top 10 most active members in this server:")
         .setTimestamp();
 

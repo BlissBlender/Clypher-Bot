@@ -16,8 +16,9 @@ import { initializeMusic } from './services/music/riffySetup.js';
 import { shutdownMusic } from './services/music/playerHandler.js';
 import pkg from '../package.json' with { type: 'json' };
 import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/schemaVersion.js';
+import { loadAllGuildThemes } from './services/themeService.js';
 
-class TitanBot extends Client {
+class ClypherBot extends Client {
   constructor() {
     super({
       intents: [
@@ -49,7 +50,7 @@ class TitanBot extends Client {
 
   async start() {
     try {
-      startupLog('Starting TitanBot...');
+      startupLog('Starting ClypherBot...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       startupLog('Initializing database...');
@@ -79,6 +80,10 @@ class TitanBot extends Client {
       await loadCommands(this);
       startupLog(`Commands loaded: ${this.commands.size}`);
       
+      startupLog('Loading themes...');
+      await loadAllGuildThemes(this);
+      startupLog('Themes loaded');
+
       startupLog('Loading handlers...');
       await this.loadHandlers();
       startupLog('Handlers loaded');
@@ -208,7 +213,7 @@ class TitanBot extends Client {
 
     app.get('/', (req, res) => {
       res.status(200).json({ 
-        message: 'TitanBot System Online',
+        message: 'ClypherBot System Online',
         version: pkg.version,
         timestamp: new Date().toISOString()
       });
@@ -283,7 +288,6 @@ class TitanBot extends Client {
         }
         
         // Save cleaned counters if any were orphaned
-        // Save cleaned counters if any were orphaned
         if (orphanedCounters.length > 0) {
           await saveServerCounters(this, guildId, validCounters);
           logger.info(`Cleaned up ${orphanedCounters.length} orphaned counter(s) from guild ${guildId} during scheduled update`);
@@ -352,7 +356,6 @@ class TitanBot extends Client {
       logger.info('✅ Music players stopped');
 
       // Close database connection
-      // Close database connection
       if (this.db && this.db.db) {
         logger.info('Closing database connection...');
         try {
@@ -387,7 +390,7 @@ class TitanBot extends Client {
 }
 
 try {
-  const bot = new TitanBot();
+  const bot = new ClypherBot();
   
   const setupShutdown = () => {
     process.on('SIGTERM', () => bot.shutdown('SIGTERM'));
@@ -423,4 +426,4 @@ try {
   process.exit(1);
 }
 
-export default TitanBot;
+export default ClypherBot;

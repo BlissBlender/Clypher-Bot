@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { successEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
-import { handleInteractionError, TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
@@ -29,7 +29,7 @@ export default {
       const match = notation.match(/^(\d*)d(\d+)([\+\-]\d+)?$/);
 
       if (!match) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
           `Invalid dice notation: ${notation}`,
           ErrorTypes.USER_INPUT,
           'Invalid notation. Use format like `1d20` or `3d6+5`.'
@@ -41,7 +41,7 @@ export default {
       const modifier = parseInt(match[3] || "0", 10);
 
       if (numDice < 1 || numDice > 20) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
           `Too many dice requested: ${numDice}`,
           ErrorTypes.VALIDATION,
           'Please keep the number of dice between 1 and 20.'
@@ -49,7 +49,7 @@ export default {
       }
 
       if (numSides < 1 || numSides > 1000) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
           `Invalid number of sides: ${numSides}`,
           ErrorTypes.VALIDATION,
           'Please keep the number of sides between 1 and 1000.'

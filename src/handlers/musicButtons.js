@@ -13,6 +13,7 @@ import {
 import { canControlMusic, VOICE_CHANNEL_DENIAL } from '../services/music/permissions.js';
 import { refreshPlayerMessage } from '../services/music/playerHandler.js';
 import { MUSIC_BUTTON_IDS } from '../services/music/musicEmbeds.js';
+import { successEmbed } from '../utils/embeds.js';
 import { replyUserError, ErrorTypes } from '../utils/errorHandler.js';
 
 async function handleMusicButton(interaction, client) {
@@ -89,6 +90,32 @@ async function handleMusicButton(interaction, client) {
         return replyUserError(interaction, { type: ErrorTypes.PERMISSION, message: VOICE_CHANNEL_DENIAL });
     }
 
+    // Handle Stop confirmation before deferUpdate so we can reply with a fresh message
+    if (customId === MUSIC_BUTTON_IDS.STOP) {
+        const queueLength = player.queue?.length || 0;
+
+        if (queueLength >= 5 && guildData.stopConfirmPending !== interaction.user.id) {
+            guildData.stopConfirmPending = interaction.user.id;
+            setTimeout(() => {
+                if (guildData.stopConfirmPending === interaction.user.id) {
+                    guildData.stopConfirmPending = null;
+                }
+            }, 15000);
+            return interaction.reply({
+                embeds: [successEmbed(
+                    'Confirm Stop',
+                    `There are **${queueLength}** tracks in the queue. Press Stop again within 15 seconds to confirm.`,
+                )],
+                flags: MessageFlags.Ephemeral,
+            });
+        }
+
+        guildData.stopConfirmPending = null;
+        await interaction.deferUpdate();
+        await destroyPlayerSession(client, interaction.guild.id, player, guildData);
+        return;
+    }
+
     await interaction.deferUpdate();
 
     try {
@@ -101,9 +128,6 @@ async function handleMusicButton(interaction, client) {
                 break;
             case MUSIC_BUTTON_IDS.SKIP:
                 player.stop();
-                break;
-            case MUSIC_BUTTON_IDS.STOP:
-                await destroyPlayerSession(client, interaction.guild.id, player, guildData);
                 break;
             case MUSIC_BUTTON_IDS.SHUFFLE:
                 if (player.queue.length > 0) {

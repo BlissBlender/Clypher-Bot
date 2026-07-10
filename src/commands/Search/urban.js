@@ -7,6 +7,7 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { getColor } from '../../config/bot.js';
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('urban')
         .setDescription('Search Urban Dictionary for definitions')

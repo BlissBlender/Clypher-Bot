@@ -3,10 +3,13 @@ import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } f
 import { createEmbed } from '../../utils/embeds.js';
 import { getLevelingConfig, saveLevelingConfig } from '../../services/leveling.js';
 import { botHasPermission } from '../../utils/permissionGuard.js';
-import { TitanBotError, ErrorTypes, handleInteractionError } from '../../utils/errorHandler.js';
+import { ClypherBotError, ErrorTypes, handleInteractionError } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { logger } from '../../utils/logger.js';
 import levelDashboard from './modules/level_dashboard.js';
+import levelAdd from './leveladd.js';
+import levelRemove from './levelremove.js';
+import levelSet from './levelset.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -63,6 +66,39 @@ export default {
             subcommand
                 .setName('dashboard')
                 .setDescription('Open the interactive leveling configuration dashboard'),
+        )
+        .addSubcommand((subcommand) =>
+            subcommand
+                .setName('add')
+                .setDescription('Add levels to a user')
+                .addUserOption((option) =>
+                    option.setName('user').setDescription('User to add levels to').setRequired(true),
+                )
+                .addIntegerOption((option) =>
+                    option.setName('levels').setDescription('Number of levels to add').setRequired(true).setMinValue(1),
+                ),
+        )
+        .addSubcommand((subcommand) =>
+            subcommand
+                .setName('remove')
+                .setDescription('Remove levels from a user')
+                .addUserOption((option) =>
+                    option.setName('user').setDescription('User to remove levels from').setRequired(true),
+                )
+                .addIntegerOption((option) =>
+                    option.setName('levels').setDescription('Number of levels to remove').setRequired(true).setMinValue(1),
+                ),
+        )
+        .addSubcommand((subcommand) =>
+            subcommand
+                .setName('set')
+                .setDescription("Set a user's level to a specific value")
+                .addUserOption((option) =>
+                    option.setName('user').setDescription('User to set level for').setRequired(true),
+                )
+                .addIntegerOption((option) =>
+                    option.setName('level').setDescription('Level to set').setRequired(true).setMinValue(0),
+                ),
         ),
     category: 'Leveling',
 
@@ -83,6 +119,18 @@ export default {
                 return levelDashboard.execute(interaction, config, client);
             }
 
+            if (subcommand === 'add') {
+                return levelAdd.execute(interaction, config, client);
+            }
+
+            if (subcommand === 'remove') {
+                return levelRemove.execute(interaction, config, client);
+            }
+
+            if (subcommand === 'set') {
+                return levelSet.execute(interaction, config, client);
+            }
+
             if (subcommand === 'setup') {
                 const channel = interaction.options.getChannel('channel');
                 const xpMin = interaction.options.getInteger('xp_min') ?? 15;
@@ -97,7 +145,7 @@ export default {
                 }
 
                 if (!botHasPermission(channel, ['SendMessages', 'EmbedLinks'])) {
-                    throw new TitanBotError(
+                    throw new ClypherBotError(
                         'Bot missing permissions in the specified channel',
                         ErrorTypes.PERMISSION,
                         `I need **SendMessages** and **EmbedLinks** permissions in ${channel} to send level-up notifications.`,

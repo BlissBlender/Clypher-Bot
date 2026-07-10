@@ -19,7 +19,7 @@ import {
 import { InteractionHelper } from '../../../utils/interactionHelper.js';
 import { successEmbed, infoEmbed } from '../../../utils/embeds.js';
 import { logger } from '../../../utils/logger.js';
-import { TitanBotError, ErrorTypes, replyUserError } from '../../../utils/errorHandler.js';
+import { ClypherBotError, ErrorTypes, replyUserError } from '../../../utils/errorHandler.js';
 import { getGuildConfig } from '../../../services/guildConfig.js';
 import { getGuildConfigKey } from '../../../utils/database.js';
 import { getGuildTicketStats } from '../../../utils/database/tickets.js';
@@ -100,7 +100,7 @@ function buildPanelButtonRow(config) {
 async function repostTicketPanel(client, guild, guildConfig, guildId) {
     const channel = await guild.channels.fetch(guildConfig.ticketPanelChannelId).catch(() => null);
     if (!channel) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
             'Panel channel missing',
             ErrorTypes.CONFIGURATION,
             'The configured ticket panel channel no longer exists. Set a new panel channel from the dashboard.',
@@ -264,7 +264,7 @@ export default {
             const guildConfig = await getGuildConfig(client, guildId);
 
             if (!guildConfig.ticketPanelChannelId) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Ticket system not configured',
                     ErrorTypes.CONFIGURATION,
                     'The ticket system has not been set up yet. Run `/ticket setup` first to configure it.',
@@ -333,9 +333,9 @@ export default {
                 },
             });
         } catch (error) {
-            if (error instanceof TitanBotError) throw error;
+            if (error instanceof ClypherBotError) throw error;
             logger.error('Unexpected error in ticket_config:', error);
-            throw new TitanBotError(
+            throw new ClypherBotError(
                 `Ticket config failed: ${error.message}`,
                 ErrorTypes.UNKNOWN,
                 'Failed to open the ticket configuration dashboard.',

@@ -4,7 +4,11 @@ import { getLevelingConfig, getUserLevelData, saveLevelingConfig } from './level
 async function listLevelUserIds(client, guildId) {
     if (!client.db?.list) return [];
 
-    const prefixes = [`${guildId}:leveling:users:`, `guild:${guildId}:leveling:users:`];
+    // Primary: correct key format with `guild:` prefix
+    const CORRECT_PREFIX = `guild:${guildId}:leveling:users:`;
+    // Legacy fallback: old key format without `guild:` prefix
+    const LEGACY_PREFIX = `${guildId}:leveling:users:`;
+    const prefixes = [CORRECT_PREFIX, LEGACY_PREFIX];
     const userIds = new Set();
 
     for (const prefix of prefixes) {
@@ -17,6 +21,23 @@ async function listLevelUserIds(client, guildId) {
             if (!key.startsWith(prefix)) continue;
             const userId = key.slice(prefix.length);
             if (/^\d{17,19}$/.test(userId)) userIds.add(userId);
+
+            // Migrate legacy keys to correct format with sanitization
+            if (prefix === LEGACY_PREFIX) {
+                const correctKey = `guild:${guildId}:leveling:users:${userId}`;
+                const data = await client.db.get(key).catch(() => null);
+                if (data) {
+                    const sanitized = {
+                        xp: Math.max(0, Number(data.xp) || 0),
+                        level: Math.max(0, Math.min(Number(data.level) || 0, 1000)), // matches MAX_LEVEL in services/leveling.js
+                        totalXp: Math.max(0, Number(data.totalXp) || 0),
+                        lastMessage: Number(data.lastMessage) || 0,
+                        rank: Number(data.rank) || 0
+                    };
+                    await client.db.set(correctKey, sanitized).catch(() => {});
+                    await client.db.delete(key).catch(() => {});
+                }
+            }
         }
     }
 

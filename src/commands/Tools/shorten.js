@@ -70,7 +70,7 @@ export default {
                 response = await fetch(apiUrl, {
                     signal: controller.signal,
                     headers: {
-                        'User-Agent': 'TitanBot URL Shortener/1.0'
+                        'User-Agent': 'ClypherBot URL Shortener/1.0'
                     }
                 });
             } catch (networkError) {

@@ -1,7 +1,7 @@
 import { MessageFlags } from 'discord.js';
 import { successEmbed } from '../../utils/embeds.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getGuildMusicData, clearUpdateInterval } from './playerStore.js';
 import { canControlMusic, requireVoiceChannel, VOICE_CHANNEL_DENIAL } from './permissions.js';
 import {
@@ -12,15 +12,13 @@ import {
 } from './musicEmbeds.js';
 import { refreshPlayerMessage } from './playerHandler.js';
 
-const YOUTUBE_URL_PATTERN = /(?:youtube\.com|youtu\.be)/i;
-
 export function getPlayer(client, guildId) {
     return client.riffy?.players?.get(guildId) || null;
 }
 
 export function assertRiffyAvailable(client) {
     if (!client.riffy) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
             'Lavalink not configured',
             ErrorTypes.CONFIGURATION,
             'Music is unavailable — Lavalink is not configured.',
@@ -30,7 +28,7 @@ export function assertRiffyAvailable(client) {
 
 export function assertInVoice(member) {
     if (!requireVoiceChannel(member)) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
             'Not in voice channel',
             ErrorTypes.USER_INPUT,
             'You need to be in a voice channel.',
@@ -40,7 +38,7 @@ export function assertInVoice(member) {
 
 export function assertCanControl(member, player) {
     if (!canControlMusic(member, player)) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
             'Wrong voice channel',
             ErrorTypes.PERMISSION,
             VOICE_CHANNEL_DENIAL,
@@ -118,14 +116,6 @@ export async function joinVoiceChannel(client, interaction) {
 }
 
 export async function playQuery(client, interaction, query) {
-    if (YOUTUBE_URL_PATTERN.test(query)) {
-        throw new TitanBotError(
-            'YouTube URL blocked',
-            ErrorTypes.USER_INPUT,
-            'YouTube links are not supported. Try a song name instead.',
-        );
-    }
-
     const { player, guildData } = await ensurePlayer(client, interaction);
 
     const result = await client.riffy.resolve({
@@ -169,11 +159,11 @@ export async function playQuery(client, interaction, query) {
     ) {
         const track = tracks?.[0];
         if (!track) {
-            throw new TitanBotError('No results', ErrorTypes.USER_INPUT, 'No results found for that query.');
+            throw new ClypherBotError('No results', ErrorTypes.USER_INPUT, 'No results found for that query.');
         }
 
         if (isDuplicateTrack(player, track)) {
-            throw new TitanBotError(
+            throw new ClypherBotError(
                 'Duplicate track',
                 ErrorTypes.USER_INPUT,
                 `**${track.info.title}** is already in the queue or playing.`,
@@ -195,13 +185,13 @@ export async function playQuery(client, interaction, query) {
         };
     }
 
-    throw new TitanBotError('No results', ErrorTypes.USER_INPUT, `No results found. (loadType: ${loadType})`);
+    throw new ClypherBotError('No results', ErrorTypes.USER_INPUT, `No results found. (loadType: ${loadType})`);
 }
 
 export async function skipTrack(client, interaction) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.current) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
     }
     assertCanControl(interaction.member, player);
     const title = player.current.info?.title || 'Unknown';
@@ -212,7 +202,7 @@ export async function skipTrack(client, interaction) {
 export async function stopPlayback(client, interaction) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
     }
     assertCanControl(interaction.member, player);
 
@@ -264,12 +254,12 @@ export async function applyResume(client, guildId) {
 export async function pausePlayback(client, interaction) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.current) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
     }
     assertCanControl(interaction.member, player);
 
     if (player.paused) {
-        throw new TitanBotError('Already paused', ErrorTypes.USER_INPUT, 'Playback is already paused.');
+        throw new ClypherBotError('Already paused', ErrorTypes.USER_INPUT, 'Playback is already paused.');
     }
 
     await applyPause(client, interaction.guild.id);
@@ -279,12 +269,12 @@ export async function pausePlayback(client, interaction) {
 export async function resumePlayback(client, interaction) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.current) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
     }
     assertCanControl(interaction.member, player);
 
     if (!player.paused) {
-        throw new TitanBotError('Not paused', ErrorTypes.USER_INPUT, 'Playback is not paused.');
+        throw new ClypherBotError('Not paused', ErrorTypes.USER_INPUT, 'Playback is not paused.');
     }
 
     await applyResume(client, interaction.guild.id);
@@ -294,7 +284,7 @@ export async function resumePlayback(client, interaction) {
 export async function shuffleQueue(client, interaction) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.queue?.length) {
-        throw new TitanBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is empty.');
+        throw new ClypherBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is empty.');
     }
     assertCanControl(interaction.member, player);
     player.queue.shuffle();
@@ -306,7 +296,7 @@ export async function shuffleQueue(client, interaction) {
 export async function setLoopMode(client, interaction, mode) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
     }
     assertCanControl(interaction.member, player);
 
@@ -328,7 +318,7 @@ export async function toggleLoop(client, interaction) {
 export async function setVolume(client, interaction, volume) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
     }
     assertCanControl(interaction.member, player);
 
@@ -347,7 +337,7 @@ export async function adjustVolume(client, interaction, delta) {
 export async function seekTrack(client, interaction, seconds) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.current) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
     }
     assertCanControl(interaction.member, player);
 
@@ -360,13 +350,13 @@ export async function seekTrack(client, interaction, seconds) {
 export async function removeFromQueue(client, interaction, index) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.queue?.length) {
-        throw new TitanBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is empty.');
+        throw new ClypherBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is empty.');
     }
     assertCanControl(interaction.member, player);
 
     const queueIndex = index - 1;
     if (queueIndex < 0 || queueIndex >= player.queue.length) {
-        throw new TitanBotError('Invalid index', ErrorTypes.USER_INPUT, `Invalid queue position. Queue has ${player.queue.length} track(s).`);
+        throw new ClypherBotError('Invalid index', ErrorTypes.USER_INPUT, `Invalid queue position. Queue has ${player.queue.length} track(s).`);
     }
 
     const removed = player.queue[queueIndex];
@@ -377,14 +367,14 @@ export async function removeFromQueue(client, interaction, index) {
 export async function moveInQueue(client, interaction, from, to) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.queue?.length) {
-        throw new TitanBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is empty.');
+        throw new ClypherBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is empty.');
     }
     assertCanControl(interaction.member, player);
 
     const fromIndex = from - 1;
     const toIndex = to - 1;
     if (fromIndex < 0 || fromIndex >= player.queue.length || toIndex < 0 || toIndex >= player.queue.length) {
-        throw new TitanBotError('Invalid index', ErrorTypes.USER_INPUT, 'Invalid queue positions.');
+        throw new ClypherBotError('Invalid index', ErrorTypes.USER_INPUT, 'Invalid queue positions.');
     }
 
     const track = player.queue[fromIndex];
@@ -396,12 +386,23 @@ export async function moveInQueue(client, interaction, from, to) {
 export async function clearQueue(client, interaction) {
     const player = getPlayer(client, interaction.guild.id);
     if (!player?.queue?.length) {
-        throw new TitanBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is already empty.');
+        throw new ClypherBotError('Empty queue', ErrorTypes.USER_INPUT, 'The queue is already empty.');
     }
     assertCanControl(interaction.member, player);
     player.queue.clear();
     await refreshPlayerMessage(client, interaction.guild.id);
     return successEmbed('Queue Cleared', 'All queued tracks were removed.');
+}
+
+export async function setAutoplay(client, interaction, enabled) {
+    const guildData = getGuildMusicData(interaction.guild.id);
+    guildData.autoplay = enabled;
+    return successEmbed(
+        'Autoplay',
+        enabled
+            ? 'Autoplay enabled. When the queue ends, related tracks will be played automatically.'
+            : 'Autoplay disabled. Playback will stop when the queue ends.',
+    );
 }
 
 export async function setTwentyFourSeven(client, interaction, enabled) {
@@ -418,7 +419,7 @@ export async function setTwentyFourSeven(client, interaction, enabled) {
 export function buildNowPlayingReply(client, guildId) {
     const player = getPlayer(client, guildId);
     if (!player?.current) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'Nothing is playing right now.');
     }
     const guildData = getGuildMusicData(guildId);
     return {
@@ -429,7 +430,7 @@ export function buildNowPlayingReply(client, guildId) {
 export function buildQueueReply(client, guildId, page = 0) {
     const player = getPlayer(client, guildId);
     if (!player) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'No active music player.');
     }
 
     const totalPages = Math.max(1, Math.ceil((player.queue?.length || 0) / getQueuePageSize()));
@@ -483,7 +484,7 @@ export async function leaveVoiceChannel(client, interaction) {
     const guildId = interaction.guild.id;
     const player = getPlayer(client, guildId);
     if (!player) {
-        throw new TitanBotError('No player', ErrorTypes.USER_INPUT, 'I am not in a voice channel.');
+        throw new ClypherBotError('No player', ErrorTypes.USER_INPUT, 'I am not in a voice channel.');
     }
     assertCanControl(interaction.member, player);
 

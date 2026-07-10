@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, getMaxBankCapacity } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
 import { logger } from '../../utils/logger.js';
@@ -57,6 +57,7 @@ export default {
             const embed = createEmbed({
                 title: `${targetUser.username}'s Balance`,
                 description: `Here is the current financial status for ${targetUser.username}.`,
+                color: 'info'
             })
                 .addFields(
                     {

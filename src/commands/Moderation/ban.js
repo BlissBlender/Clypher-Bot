@@ -4,7 +4,7 @@ import { logModerationAction } from '../../utils/moderation.js';
 import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { ModerationService } from '../../services/moderationService.js';
-import { handleInteractionError, TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 export default {
     data: new SlashCommandBuilder()
         .setName("ban")
@@ -27,7 +27,7 @@ export default {
             const reason = interaction.options.getString("reason") || "No reason provided";
 
             if (!user) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Missing target user',
                     ErrorTypes.USER_INPUT,
                     'You must specify a user to ban.',

@@ -609,7 +609,7 @@ export async function handleApplicationReviewModal(interaction) {
                 `Your application for **${application.roleName}** has been **${status}**.\n` +
                 `**Note:** ${reason}\n\n` +
                 `Use \`/apply status id:${appId}\` to view details.`,
-                isApprove ? '#00FF00' : '#FF0000'
+                isApprove ? getColor('success') : getColor('error')
             );
             
             await user.send({ embeds: [dmEmbed] });
@@ -627,7 +627,7 @@ export async function handleApplicationReviewModal(interaction) {
                         if (embed) {
                             const reviewStatus = getApplicationStatusPresentation(status);
                             const newEmbed = EmbedBuilder.from(embed)
-                                .setColor(isApprove ? '#00FF00' : '#FF0000')
+                                .setColor(isApprove ? getColor('success') : getColor('error'))
                                 .spliceFields(0, 1, {
                                     name: 'Status',
                                     value: `${reviewStatus.statusEmoji} ${reviewStatus.statusLabel}`

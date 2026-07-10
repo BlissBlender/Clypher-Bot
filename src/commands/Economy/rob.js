@@ -1,15 +1,12 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { successEmbed, warningEmbed, buildUserErrorEmbed } from '../../utils/embeds.js';
+import { createEmbed, warningEmbed, buildUserErrorEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
-const ROB_COOLDOWN = 4 * 60 * 60 * 1000;
-const BASE_ROB_SUCCESS_CHANCE = 0.25;
-const ROB_PERCENTAGE = 0.15;
-const FINE_PERCENTAGE = 0.1;
-
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('rob')
         .setDescription('Attempt to rob another user (very risky)')
@@ -61,8 +58,8 @@ export default {
             
             const lastRob = robberData.lastRob || 0;
 
-            if (now < lastRob + ROB_COOLDOWN) {
-                const remaining = lastRob + ROB_COOLDOWN - now;
+            if (now < lastRob + botConfig.economy.cooldowns.rob) {
+                const remaining = lastRob + botConfig.economy.cooldowns.rob - now;
                 const hours = Math.floor(remaining / (1000 * 60 * 60));
                 const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -99,21 +96,22 @@ export default {
                 });
             }
 
-            const isSuccessful = Math.random() < BASE_ROB_SUCCESS_CHANCE;
+            const isSuccessful = Math.random() < botConfig.economy.robSuccessRate;
             let resultEmbed;
 
             if (isSuccessful) {
-                const amountStolen = Math.floor(victimData.wallet * ROB_PERCENTAGE);
+                const amountStolen = Math.floor(victimData.wallet * botConfig.economy.robPercentage);
 
                 robberData.wallet = (robberData.wallet || 0) + amountStolen;
                 victimData.wallet = (victimData.wallet || 0) - amountStolen;
 
-                resultEmbed = successEmbed(
-                    'Robbery Successful',
-                    `You successfully stole **$${amountStolen.toLocaleString()}** from ${victimUser.username}!`
-                );
+                resultEmbed = createEmbed({
+                    title: 'Robbery Successful',
+                    description: `You successfully stole **$${amountStolen.toLocaleString()}** from ${victimUser.username}!`,
+                    color: 'money'
+                });
             } else {
-                const fineAmount = Math.floor((robberData.wallet || 0) * FINE_PERCENTAGE);
+                const fineAmount = Math.floor((robberData.wallet || 0) * botConfig.economy.robFinePercentage);
 
                 if ((robberData.wallet || 0) < fineAmount) {
                     robberData.wallet = 0;

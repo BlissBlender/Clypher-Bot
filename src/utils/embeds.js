@@ -2,6 +2,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { getColor } from '../config/bot.js';
+import { getGuildOverrides } from '../services/themeService.js';
 
 const EMOJI_REGEX = /[\p{Extended_Pictographic}\uFE0F]/gu;
 const EMBED_FOOTER_SYMBOL = Symbol('titanbotFooterText');
@@ -121,7 +122,8 @@ export function createEmbed({
   thumbnail = null,
   image = null,
   timestamp = false,
-  url = null
+  url = null,
+  guildId = null
 } = {}) {
   const embed = new EmbedBuilder();
 
@@ -134,7 +136,8 @@ export function createEmbed({
   }
 
   try {
-    const embedColor = getColor(color) || '#000000';
+    const overrides = guildId ? getGuildOverrides(guildId) : null;
+    const embedColor = getColor(color, '#000000', overrides) || '#000000';
     embed.setColor(embedColor);
   } catch (error) {
     embed.setColor('#000000');

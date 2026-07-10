@@ -1,14 +1,9 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed, warningEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-
-const CRIME_COOLDOWN = 60 * 60 * 1000;
-const MIN_CRIME_AMOUNT = 100;
-const MAX_CRIME_AMOUNT = 2000;
-const FAILURE_RATE = 0.4;
-const JAIL_TIME = 2 * 60 * 60 * 1000;
 
 const CRIME_TYPES = [
     { name: "Pickpocketing", min: 100, max: 500, risk: 0.3 },
@@ -19,6 +14,7 @@ const CRIME_TYPES = [
 ];
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('crime')
         .setDescription('Commit a crime to earn money (risky)')
@@ -57,8 +53,8 @@ export default {
                 );
             }
 
-            if (now < lastCrime + CRIME_COOLDOWN) {
-                const timeLeft = Math.ceil((lastCrime + CRIME_COOLDOWN - now) / (1000 * 60));
+            if (now < lastCrime + botConfig.economy.cooldowns.crime) {
+                const timeLeft = Math.ceil((lastCrime + botConfig.economy.cooldowns.crime - now) / (1000 * 60));
                 throw createError(
                     "Crime cooldown active",
                     ErrorTypes.RATE_LIMIT,
@@ -94,16 +90,17 @@ export default {
                 
                 await setEconomyData(client, guildId, userId, userData);
                 
-                const embed = successEmbed(
-                    "🕵️ Crime Successful!",
-                    `You successfully committed ${crime.name} and earned **${amountEarned}** coins!`
-                );
+                const embed = createEmbed({
+                    title: "🕵️ Crime Successful!",
+                    description: `You successfully committed ${crime.name} and earned **${amountEarned}** coins!`,
+                    color: 'money'
+                });
                 
                 await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
             } else {
                 const fine = Math.floor(amountEarned * 0.2);
                 userData.wallet = Math.max(0, (userData.wallet || 0) - fine);
-                userData.jailedUntil = now + JAIL_TIME;
+                userData.jailedUntil = now + botConfig.economy.crimeJailTime;
                 
                 await setEconomyData(client, guildId, userId, userData);
                 

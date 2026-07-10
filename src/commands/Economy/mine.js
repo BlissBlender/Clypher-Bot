@@ -1,14 +1,9 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-
-const MINE_COOLDOWN = 60 * 60 * 1000;
-const BASE_MIN_REWARD = 400;
-const BASE_MAX_REWARD = 1200;
-const PICKAXE_MULTIPLIER = 1.2;
-const DIAMOND_PICKAXE_MULTIPLIER = 2.0;
 
 const MINE_LOCATIONS = [
     "abandoned gold mine",
@@ -19,6 +14,7 @@ const MINE_LOCATIONS = [
 ];
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('mine')
         .setDescription('Go mining to earn money'),
@@ -36,8 +32,8 @@ export default {
             const hasDiamondPickaxe = userData.inventory["diamond_pickaxe"] || 0;
             const hasPickaxe = userData.inventory["pickaxe"] || 0;
 
-            if (now < lastMine + MINE_COOLDOWN) {
-                const remaining = lastMine + MINE_COOLDOWN - now;
+            if (now < lastMine + botConfig.economy.cooldowns.mine) {
+                const remaining = lastMine + botConfig.economy.cooldowns.mine - now;
                 const hours = Math.floor(remaining / (1000 * 60 * 60));
                 const minutes = Math.floor(
                     (remaining % (1000 * 60 * 60)) / (1000 * 60),
@@ -53,17 +49,17 @@ export default {
 
             const baseEarned =
                 Math.floor(
-                    Math.random() * (BASE_MAX_REWARD - BASE_MIN_REWARD + 1),
-                ) + BASE_MIN_REWARD;
+                    Math.random() * (botConfig.economy.mineMaxReward - botConfig.economy.mineMinReward + 1),
+                ) + botConfig.economy.mineMinReward;
 
             let finalEarned = baseEarned;
             let multiplierMessage = "";
 
             if (hasDiamondPickaxe > 0) {
-                finalEarned = Math.floor(baseEarned * DIAMOND_PICKAXE_MULTIPLIER);
+                finalEarned = Math.floor(baseEarned * botConfig.economy.diamondPickaxeMultiplier);
                 multiplierMessage = `\n💎 **Diamond Pickaxe Bonus: +100%**`;
             } else if (hasPickaxe > 0) {
-                finalEarned = Math.floor(baseEarned * PICKAXE_MULTIPLIER);
+                finalEarned = Math.floor(baseEarned * botConfig.economy.pickaxeMultiplier);
                 multiplierMessage = `\n⛏️ **Pickaxe Bonus: +20%**`;
             }
 
@@ -77,10 +73,11 @@ userData.lastMine = now;
 
             await setEconomyData(client, guildId, userId, userData);
 
-            const embed = successEmbed(
-                "💰 Mining Expedition Successful!",
-                `You explored a **${location}** and managed to find minerals worth **$${finalEarned.toLocaleString()}**!${multiplierMessage}`,
-            )
+            const embed = createEmbed({
+                title: "💰 Mining Expedition Successful!",
+                description: `You explored a **${location}** and managed to find minerals worth **$${finalEarned.toLocaleString()}**!${multiplierMessage}`,
+                color: 'money'
+            })
                 .addFields({
                     name: "New Cash Balance",
                     value: `$${userData.wallet.toLocaleString()}`,

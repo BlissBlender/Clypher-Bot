@@ -1,17 +1,15 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { getGuildConfig } from '../../services/guildConfig.js';
 import { formatDuration } from '../../utils/embeds.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
-const DAILY_COOLDOWN = 24 * 60 * 60 * 1000;
-const DAILY_AMOUNT = 1000;
-const PREMIUM_BONUS_PERCENTAGE = 0.1;
-
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('daily')
         .setDescription('Claim your daily cash reward'),
@@ -39,8 +37,8 @@ export default {
             
             const lastDaily = userData.lastDaily || 0;
 
-            if (now < lastDaily + DAILY_COOLDOWN) {
-                const timeRemaining = lastDaily + DAILY_COOLDOWN - now;
+            if (now < lastDaily + botConfig.economy.cooldowns.daily) {
+                const timeRemaining = lastDaily + botConfig.economy.cooldowns.daily - now;
                 throw createError(
                     "Daily cooldown active",
                     ErrorTypes.RATE_LIMIT,
@@ -52,7 +50,7 @@ export default {
             const guildConfig = await getGuildConfig(client, guildId);
             const PREMIUM_ROLE_ID = guildConfig.premiumRoleId;
 
-            let earned = DAILY_AMOUNT;
+            let earned = botConfig.economy.dailyAmount;
             let bonusMessage = "";
             let hasPremiumRole = false;
 
@@ -62,7 +60,7 @@ export default {
                 interaction.member.roles.cache.has(PREMIUM_ROLE_ID)
             ) {
                 const bonusAmount = Math.floor(
-                    DAILY_AMOUNT * PREMIUM_BONUS_PERCENTAGE,
+                    botConfig.economy.dailyAmount * botConfig.economy.dailyPremiumBonus,
                 );
                 earned += bonusAmount;
                 bonusMessage = `\n✨ **Premium Bonus:** +$${bonusAmount.toLocaleString()}`;
@@ -83,10 +81,11 @@ export default {
                 timestamp: new Date().toISOString()
             });
 
-            const embed = successEmbed(
-                "✅ Daily Claimed!",
-                `You have claimed your daily **$${earned.toLocaleString()}**!${bonusMessage}`
-            )
+            const embed = createEmbed({
+                title: "✅ Daily Claimed!",
+                description: `You have claimed your daily **$${earned.toLocaleString()}**!${bonusMessage}`,
+                color: 'money'
+            })
                 .addFields({
                     name: "New Cash Balance",
                     value: `$${userData.wallet.toLocaleString()}`,

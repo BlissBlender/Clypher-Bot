@@ -1,10 +1,11 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData, getMaxBankCapacity } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('withdraw')
         .setDescription('Withdraw money from your bank to your wallet')
@@ -63,10 +64,11 @@ export default {
 
             await setEconomyData(client, guildId, userId, userData);
 
-            const embed = successEmbed(
-                'Withdrawal Successful',
-                `You successfully withdrew **$${withdrawAmount.toLocaleString()}** from your bank.`
-            )
+            const embed = createEmbed({
+                title: 'Withdrawal Successful',
+                description: `You successfully withdrew **$${withdrawAmount.toLocaleString()}** from your bank.`,
+                color: 'money'
+            })
                 .addFields(
                     {
                         name: "New Cash Balance",

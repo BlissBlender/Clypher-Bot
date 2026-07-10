@@ -1,13 +1,9 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-
-const FISH_COOLDOWN = 45 * 60 * 1000; 
-const BASE_MIN_REWARD = 300;
-const BASE_MAX_REWARD = 900;
-const FISHING_ROD_MULTIPLIER = 1.5;
 
 const FISH_TYPES = [
     { name: 'Bass', emoji: '🐟', rarity: 'common' },
@@ -30,6 +26,7 @@ const CATCH_MESSAGES = [
 ];
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('fish')
         .setDescription('Go fishing to catch fish and earn money'),
@@ -46,8 +43,8 @@ export default {
             const lastFish = userData.lastFish || 0;
             const hasFishingRod = userData.inventory["fishing_rod"] || 0;
 
-            if (now < lastFish + FISH_COOLDOWN) {
-                const remaining = lastFish + FISH_COOLDOWN - now;
+            if (now < lastFish + botConfig.economy.cooldowns.fish) {
+                const remaining = lastFish + botConfig.economy.cooldowns.fish - now;
                 const hours = Math.floor(remaining / (1000 * 60 * 60));
                 const minutes = Math.floor(
                     (remaining % (1000 * 60 * 60)) / (1000 * 60),
@@ -82,20 +79,23 @@ export default {
             }
 
             const baseEarned = Math.floor(
-                Math.random() * (BASE_MAX_REWARD - BASE_MIN_REWARD + 1)
-            ) + BASE_MIN_REWARD;
+                Math.random() * (botConfig.economy.fishMaxReward - botConfig.economy.fishMinReward + 1)
+            ) + botConfig.economy.fishMinReward;
 
             let finalEarned = baseEarned;
             let multiplierMessage = "";
 
             if (hasFishingRod > 0) {
-                finalEarned = Math.floor(baseEarned * FISHING_ROD_MULTIPLIER);
+                finalEarned = Math.floor(baseEarned * botConfig.economy.fishingRodMultiplier);
                 multiplierMessage = `\n🎣 **Fishing Rod Bonus: +50%**`;
             }
 
             const catchMessage = CATCH_MESSAGES[Math.floor(Math.random() * CATCH_MESSAGES.length)];
 
+            // Give cash + store fish in inventory for cooking
             userData.wallet += finalEarned;
+            userData.inventory = userData.inventory || {};
+            userData.inventory.fish = (userData.inventory.fish || 0) + 1;
             userData.lastFish = now;
 
             await setEconomyData(client, guildId, userId, userData);
@@ -110,7 +110,7 @@ export default {
 
             const embed = createEmbed({
                 title: 'Fishing Success!',
-                description: `${catchMessage}\n\nYou caught a **${fishCaught.emoji} ${fishCaught.name}**! You sold it for **$${finalEarned.toLocaleString()}**!${multiplierMessage}`,
+                description: `${catchMessage}\n\nYou caught a **${fishCaught.emoji} ${fishCaught.name}**!\n\n**Sold for:** **$${finalEarned.toLocaleString()}**\n**Fish stored:** +1 🐟 (use with \`/cook\`)${multiplierMessage}`,
                 color: rarityColors[fishCaught.rarity]
             })
                 .addFields(
@@ -123,9 +123,14 @@ export default {
                         name: "Rarity",
                         value: fishCaught.rarity.charAt(0).toUpperCase() + fishCaught.rarity.slice(1),
                         inline: true,
+                    },
+                    {
+                        name: "Fish in Inventory",
+                        value: `${userData.inventory.fish}`,
+                        inline: true,
                     }
                 )
-                .setFooter({ text: `Next fishing trip available in 45 minutes.` });
+                .setFooter({ text: 'Next fishing trip available in 45 minutes.' });
 
             await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
     }, { command: 'fish' })

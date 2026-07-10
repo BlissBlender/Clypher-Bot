@@ -80,6 +80,7 @@ export default {
             const embed = createEmbed({
                 title: `Economy Leaderboard`,
                 description,
+                color: 'money',
                 footer: `Your Rank: ${userRank > 0 ?`#${userRank}`: "No ranking data available"}`,
             });
 

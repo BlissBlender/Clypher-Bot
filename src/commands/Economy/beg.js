@@ -1,16 +1,14 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { successEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed, warningEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { botConfig } from '../../config/bot.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
-const COOLDOWN = 30 * 60 * 1000;
-const MIN_WIN = 50;
-const MAX_WIN = 200;
-const SUCCESS_CHANCE = 0.7;
+// Values sourced from botConfig.economy: cooldowns.beg, begMin, begMax, begSuccessChance
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('beg')
         .setDescription('Beg for a small amount of money'),
@@ -34,7 +32,7 @@ export default {
             }
 
             const lastBeg = userData.lastBeg || 0;
-            const remainingTime = lastBeg + COOLDOWN - Date.now();
+            const remainingTime = lastBeg + botConfig.economy.cooldowns.beg - Date.now();
 
             if (remainingTime > 0) {
                 const minutes = Math.floor(remainingTime / 60000);
@@ -51,14 +49,14 @@ export default {
                 );
             }
 
-            const success = Math.random() < SUCCESS_CHANCE;
+            const success = Math.random() < botConfig.economy.begSuccessChance;
 
             let replyEmbed;
             let newCash = userData.wallet;
 
             if (success) {
                 const amountWon =
-                    Math.floor(Math.random() * (MAX_WIN - MIN_WIN + 1)) + MIN_WIN;
+                    Math.floor(Math.random() * (botConfig.economy.begMax - botConfig.economy.begMin + 1)) + botConfig.economy.begMin;
 
                 newCash += amountWon;
 
@@ -69,12 +67,13 @@ export default {
                     `You found **$${amountWon.toLocaleString()}** under a park bench.`,
                 ];
 
-                replyEmbed = successEmbed(
-                    'Begging Successful',
-                    successMessages[
+                replyEmbed = createEmbed({
+                    title: 'Begging Successful',
+                    description: successMessages[
                         Math.floor(Math.random() * successMessages.length)
-                    ]
-                );
+                    ],
+                    color: 'money'
+                });
             } else {
                 const failMessages = [
                     "The police chased you off. You got nothing.",

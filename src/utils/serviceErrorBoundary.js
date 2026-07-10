@@ -1,6 +1,6 @@
 // serviceErrorBoundary.js
 
-import { createError, ErrorTypes, TitanBotError } from './errorHandler.js';
+import { createError, ErrorTypes, ClypherBotError } from './errorHandler.js';
 import { resolveErrorCode, getErrorMetadata } from './errorRegistry.js';
 
 function normalizeBoundaryContext(context = {}) {
@@ -45,7 +45,7 @@ function inferErrorType(error, fallbackType = ErrorTypes.UNKNOWN) {
 }
 
 export function ensureTypedServiceError(error, options = {}) {
-  if (error instanceof TitanBotError) {
+  if (error instanceof ClypherBotError) {
     return error;
   }
 

@@ -2,7 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import { successEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
 import { ModerationService } from '../../services/moderationService.js';
-import { handleInteractionError, TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 export default {
@@ -34,7 +34,7 @@ export default {
             const member = interaction.options.getMember("target");
 
             if (!targetUser) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Missing target user',
                     ErrorTypes.USER_INPUT,
                     'You must specify a user to untimeout.',
@@ -43,7 +43,7 @@ export default {
             }
 
             if (!member) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     "Target not found",
                     ErrorTypes.USER_INPUT,
                     "The target user is not currently in this server."

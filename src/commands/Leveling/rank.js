@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
-import { handleInteractionError, TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getUserLevelData, getLevelingConfig, getXpForLevel } from '../../services/leveling.js';
+import { getColor } from '../../config/bot.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
@@ -26,7 +27,7 @@ export default {
         await InteractionHelper.safeEditReply(interaction, {
           embeds: [
             new EmbedBuilder()
-              .setColor('#f1c40f')
+              .setColor(getColor('warning'))
               .setDescription('The leveling system is currently disabled on this server.')
           ],
           flags: MessageFlags.Ephemeral
@@ -40,7 +41,7 @@ export default {
         .catch(() => null);
 
       if (!member) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
           `User ${targetUser.id} not found in guild`,
           ErrorTypes.USER_INPUT,
           'Could not find the specified user in this server.'
@@ -83,7 +84,7 @@ export default {
             value: `${progressBar} ${progress}%`
           }
         )
-        .setColor('#2ecc71')
+        .setColor(getColor('success'))
         .setTimestamp();
 
       await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });

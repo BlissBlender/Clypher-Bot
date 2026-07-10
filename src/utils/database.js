@@ -457,73 +457,65 @@ export async function updateWelcomeConfig(client, guildId, updates) {
     }
 }
 
-export async function getLevelingConfig(client, guildId) {
-    const key = getLevelingKey(guildId);
-    try {
-        const config = await getFromDb(key, {
-            enabled: false,
-            xpPerMessage: 10,
-            xpPerMinute: 60,
-            cooldownEnabled: true,
-            messageLengthMultiplier: true,
-            levelUpMessages: true,
-            levelUpChannel: null,
-            roles: {},
-            milestones: {}
-        });
-        
-        return config;
-    } catch (error) {
-        logger.error('Error getting leveling config:', error);
-        return {
-            enabled: false,
-            xpPerMessage: 10,
-            xpPerMinute: 60,
-            cooldownEnabled: true,
-            messageLengthMultiplier: true,
-            levelUpMessages: true,
-            levelUpChannel: null,
-            roles: {},
-            milestones: {}
-        };
-    }
+/** Maximum supported level — single source of truth, imported by services/leveling.js */
+export const MAX_LEVEL = 1000;
+
+/** Legacy key without `guild:` prefix — for backward compatibility */
+function getLegacyUserLevelKey(guildId, userId) {
+  return `${guildId}:leveling:users:${userId}`;
 }
 
-export async function saveLevelingConfig(client, guildId, config) {
-    const key = getLevelingKey(guildId);
-    try {
-        await setInDb(key, config);
-        return true;
-    } catch (error) {
-        logger.error(`Error saving leveling config for guild ${guildId}:`, error);
-        return false;
-    }
+/** Sanitize raw leveling data to safe values */
+function sanitizeLevelData(raw) {
+  return {
+    xp: Math.max(0, Number(raw?.xp) || 0),
+    level: Math.max(0, Math.min(Number(raw?.level) || 0, MAX_LEVEL)),
+    totalXp: Math.max(0, Number(raw?.totalXp) || 0),
+    lastMessage: Number(raw?.lastMessage) || 0,
+    rank: Number(raw?.rank) || 0,
+  };
 }
 
 export async function getUserLevelData(client, guildId, userId) {
-    const key = getUserLevelKey(guildId, userId);
+    const correctKey = getUserLevelKey(guildId, userId);
+    const legacyKey = getLegacyUserLevelKey(guildId, userId);
+
     try {
-        const data = await getFromDb(key, null);
-        if (!data) {
+        let raw;
+        // Try correct key first, fall back to legacy key for backward compatibility
+        if (client.db?.get) {
+            raw = await client.db.get(correctKey);
+        }
+
+        if (!raw && client.db?.get) {
+            raw = await client.db.get(legacyKey);
+            if (raw) {
+                // Found with legacy key — sanitize and migrate to correct key
+                const sanitized = sanitizeLevelData(raw);
+                if (client.db?.set) {
+                    await client.db.set(correctKey, sanitized);
+                }
+                if (client.db?.delete) {
+                    await client.db.delete(legacyKey).catch(() => {});
+                }
+                logger.info(`Migrated leveling data for user ${userId} in guild ${guildId} from legacy key to correct key`);
+                raw = sanitized;
+            }
+        }
+
+        if (!raw) {
             return {
                 xp: 0,
                 level: 0,
                 totalXp: 0,
                 lastMessage: 0,
                 rank: 0,
-                xpToNextLevel: getXpForLevel(1)
+                xpToNextLevel: getXpForLevel(1),
             };
         }
-        
-        const levelData = {
-            xp: data.xp || 0,
-            level: data.level || 0,
-            totalXp: data.totalXp || 0,
-            lastMessage: data.lastMessage || 0,
-            rank: data.rank || 0,
-            xpToNextLevel: getXpForLevel((data.level || 0) + 1)
-        };
-        
+
+        const levelData = sanitizeLevelData(raw);
+        levelData.xpToNextLevel = getXpForLevel(levelData.level + 1);
         return levelData;
     } catch (error) {
         logger.error(`Error getting level data for user ${userId} in guild ${guildId}:`, error);
@@ -533,25 +525,26 @@ export async function getUserLevelData(client, guildId, userId) {
             totalXp: 0,
             lastMessage: 0,
             rank: 0,
-            xpToNextLevel: getXpForLevel(1)
+            xpToNextLevel: getXpForLevel(1),
         };
     }
 }
 
 export async function saveUserLevelData(client, guildId, userId, data) {
-    const key = getUserLevelKey(guildId, userId);
+    const correctKey = getUserLevelKey(guildId, userId);
+    const legacyKey = getLegacyUserLevelKey(guildId, userId);
+
     try {
-        const levelData = {
-            ...data,
-            xp: data.xp || 0,
-            level: data.level || 0,
-            totalXp: data.totalXp || 0,
-            lastMessage: data.lastMessage || 0,
-            rank: data.rank || 0,
-            updatedAt: Date.now()
-        };
-        
-        await setInDb(key, levelData);
+        const sanitized = sanitizeLevelData(data);
+        sanitized.updatedAt = Date.now();
+
+        if (client.db?.set) {
+            await client.db.set(correctKey, sanitized);
+            // Clean up legacy key if it exists
+            if (client.db.delete) {
+                await client.db.delete(legacyKey).catch(() => {});
+            }
+        }
         return true;
     } catch (error) {
         logger.error(`Error saving level data for user ${userId} in guild ${guildId}:`, error);
@@ -559,66 +552,24 @@ export async function saveUserLevelData(client, guildId, userId, data) {
     }
 }
 
-export function getXpForLevel(level) {
-    return 5 * Math.pow(level, 2) + 50 * level + 50;
+export async function deleteUserLevelData(client, guildId, userId) {
+    const correctKey = getUserLevelKey(guildId, userId);
+    const legacyKey = getLegacyUserLevelKey(guildId, userId);
+
+    try {
+        if (client.db?.delete) {
+            await client.db.delete(correctKey);
+            await client.db.delete(legacyKey).catch(() => {});
+        }
+        return true;
+    } catch (error) {
+        logger.error(`Error deleting level data for user ${userId} in guild ${guildId}:`, error);
+        return false;
+    }
 }
 
-export async function getLeaderboard(client, guildId, limit = 10) {
-    try {
-        if (!client.db || typeof client.db.list !== "function") {
-            logger.error("Database client is not available for getLeaderboard.");
-            return [];
-        }
-
-        const prefix = `guild:${guildId}:leveling:users:`;
-        let keys = await client.db.list(prefix);
-        
-        if (!Array.isArray(keys)) {
-            if (typeof keys === 'object' && keys !== null) {
-                keys = Object.keys(keys).filter(key => key.startsWith(prefix));
-            } else {
-                return [];
-            }
-        }
-        
-        if (keys.length === 0) {
-            return [];
-        }
-        
-        const userDataPromises = keys.map(async (key) => {
-            try {
-                const userId = key.replace(prefix, '');
-                const data = await client.db.get(key);
-                if (!data) return null;
-                
-                const unwrapped = unwrapReplitData(data);
-                return {
-                    userId,
-                    xp: unwrapped.xp || 0,
-                    level: unwrapped.level || 0,
-                    totalXp: unwrapped.totalXp || 0,
-rank: 0
-                };
-            } catch (error) {
-                logger.error(`Error processing leaderboard key ${key}:`, error);
-                return null;
-            }
-        });
-        
-        let userData = (await Promise.all(userDataPromises)).filter(Boolean);
-        
-        userData.sort((a, b) => (b.totalXp || 0) - (a.totalXp || 0));
-        
-        userData = userData.map((user, index) => ({
-            ...user,
-            rank: index + 1
-        }));
-        
-        return userData.slice(0, limit);
-    } catch (error) {
-        logger.error(`Error getting leaderboard for guild ${guildId}:`, error);
-        return [];
-    }
+export function getXpForLevel(level) {
+    return 5 * Math.pow(level, 2) + 50 * level + 50;
 }
 
 export async function getApplicationRoles(client, guildId) {

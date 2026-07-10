@@ -1,16 +1,12 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
-const BASE_WIN_CHANCE = 0.4;
-const CLOVER_WIN_BONUS = 0.1;
-const CHARM_WIN_BONUS = 0.08;
-const PAYOUT_MULTIPLIER = 2.0;
-const GAMBLE_COOLDOWN = 5 * 60 * 1000;
-
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('gamble')
         .setDescription('Gamble your money for a chance to win more')
@@ -36,8 +32,8 @@ export default {
             let cloverCount = userData.inventory["lucky_clover"] || 0;
             let charmCount = userData.inventory["lucky_charm"] || 0;
 
-            if (now < lastGamble + GAMBLE_COOLDOWN) {
-                const remaining = lastGamble + GAMBLE_COOLDOWN - now;
+            if (now < lastGamble + botConfig.economy.cooldowns.gamble) {
+                const remaining = lastGamble + botConfig.economy.cooldowns.gamble - now;
                 const minutes = Math.floor(remaining / (1000 * 60));
                 const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
@@ -58,20 +54,20 @@ export default {
                 );
             }
 
-            let winChance = BASE_WIN_CHANCE;
+            let winChance = botConfig.economy.gambleWinChance;
             let cloverMessage = "";
             let usedClover = false;
             let usedCharm = false;
 
             if (cloverCount > 0) {
-                winChance += CLOVER_WIN_BONUS;
+                winChance += botConfig.economy.gambleCloverBonus;
                 userData.inventory["lucky_clover"] -= 1;
                 cloverMessage = `\n🍀 **Lucky Clover Consumed:** Your win chance was boosted!`;
                 usedClover = true;
             }
             
             else if (charmCount > 0) {
-                winChance += CHARM_WIN_BONUS;
+                winChance += botConfig.economy.gambleCharmBonus;
                 userData.inventory["lucky_charm"] -= 1;
                 cloverMessage = `\n🍀 **Lucky Charm Used (${charmCount - 1} uses remaining):** Your win chance was boosted!`;
                 usedCharm = true;
@@ -82,20 +78,22 @@ export default {
             let resultEmbed;
 
             if (win) {
-                const amountWon = Math.floor(betAmount * PAYOUT_MULTIPLIER);
+                const amountWon = Math.floor(betAmount * botConfig.economy.gamblePayoutMultiplier);
 cashChange = amountWon;
 
-                resultEmbed = successEmbed(
-                    "🎉 You Won!",
-                    `You successfully gambled and turned your **$${betAmount.toLocaleString()}** bet into **$${amountWon.toLocaleString()}**!${cloverMessage}`,
-                );
+                resultEmbed = createEmbed({
+                    title: "🎉 You Won!",
+                    description: `You successfully gambled and turned your **$${betAmount.toLocaleString()}** bet into **$${amountWon.toLocaleString()}**!${cloverMessage}`,
+                    color: 'money'
+                });
             } else {
 cashChange = -betAmount;
 
-                resultEmbed = warningEmbed(
-                    "💔 You Lost...",
-                    `The dice rolled against you. You lost your **$${betAmount.toLocaleString()}** bet.`,
-                );
+                resultEmbed = createEmbed({
+                    title: "💔 You Lost...",
+                    description: `The dice rolled against you. You lost your **$${betAmount.toLocaleString()}** bet.`,
+                    color: 'spending'
+                });
             }
 
             userData.wallet = (userData.wallet || 0) + cashChange;
@@ -121,7 +119,7 @@ userData.lastGamble = now;
                 });
             } else {
                 resultEmbed.setFooter({
-                    text: `Next gamble available in 5 minutes. Base win chance: ${Math.round(BASE_WIN_CHANCE * 100)}%.`,
+                    text: `Next gamble available in 5 minutes. Base win chance: ${Math.round(botConfig.economy.gambleWinChance * 100)}%.`,
                 });
             }
 

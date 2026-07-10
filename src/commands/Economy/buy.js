@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { shopItems } from '../../config/shop/items.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { getGuildConfig } from '../../services/guildConfig.js';
@@ -143,10 +143,11 @@ export default {
 
             await setEconomyData(client, guildId, userId, userData);
 
-            const embed = successEmbed(
-                "💰 Purchase Successful",
-                successDescription,
-            ).addFields({
+            const embed = createEmbed({
+                title: "💰 Purchase Successful",
+                description: successDescription,
+                color: 'spending'
+            }).addFields({
                 name: "New Balance",
                 value: `$${userData.wallet.toLocaleString()}`,
                 inline: true,

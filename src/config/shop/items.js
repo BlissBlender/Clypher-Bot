@@ -134,6 +134,55 @@ roleId: null,
             type: 'robbery_protection',
             protection: true
         }
+    },
+    {
+        id: 'hunting_rifle',
+        name: '🔫 Hunting Rifle',
+        price: 12000,
+        description: 'Required for `/hunt` — hunt animals for profit!',
+        type: 'tool',
+        durability: 50,
+        effect: {
+            type: 'hunting_yield',
+            multiplier: 1.0
+        }
+    },
+    {
+        id: 'cooking_pan',
+        name: '🍳 Cooking Pan',
+        price: 8000,
+        description: 'Unlocks the ability to cook meals with `/cook` — turn fish into gourmet dishes!',
+        type: 'tool',
+        durability: null,
+        effect: {
+            type: 'cooking_unlock',
+            unlocked: true
+        }
+    },
+    {
+        id: 'ammo_pack',
+        name: '📦 Ammo Pack',
+        price: 3000,
+        description: 'Replenishes your hunting supplies. Allows 3 extra uses of `/hunt`.',
+        type: 'consumable',
+        maxQuantity: 20,
+        effect: {
+            type: 'command_boost',
+            command: 'hunt',
+            uses: 3
+        }
+    },
+    {
+        id: 'chef_apron',
+        name: '👨‍🍳 Chef Apron',
+        price: 15000,
+        description: 'Doubles the sell value of all meals cooked with `/cook`!',
+        type: 'tool',
+        durability: null,
+        effect: {
+            type: 'cooking_yield',
+            multiplier: 2.0
+        }
     }
 ];
 

@@ -1,12 +1,14 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
-import { handleInteractionError, TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
+import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { checkUserPermissions } from '../../utils/permissionGuard.js';
 import { addLevels, getLevelingConfig } from '../../services/leveling.js';
 import { createEmbed } from '../../utils/embeds.js';
+import { getColor } from '../../config/bot.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+  skipRegistration: true,
   data: new SlashCommandBuilder()
     .setName('leveladd')
     .setDescription('Add levels to a user')
@@ -43,7 +45,7 @@ export default {
         await InteractionHelper.safeEditReply(interaction, {
           embeds: [
             new EmbedBuilder()
-              .setColor('#f1c40f')
+              .setColor(getColor('warning'))
               .setDescription('The leveling system is currently disabled on this server.')
           ],
           flags: MessageFlags.Ephemeral
@@ -56,7 +58,7 @@ export default {
 
       const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
       if (!member) {
-        throw new TitanBotError(
+        throw new ClypherBotError(
           `User ${targetUser.id} not found in this guild`,
           ErrorTypes.USER_INPUT,
           'The specified user is not in this server.'

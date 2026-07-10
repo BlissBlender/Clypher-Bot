@@ -1,14 +1,10 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
+import { botConfig } from '../../config/bot.js';
 import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-
-const WORK_COOLDOWN = 30 * 60 * 1000;
-const MIN_WORK_AMOUNT = 50;
-const MAX_WORK_AMOUNT = 300;
-const LAPTOP_MULTIPLIER = 1.5;
 const WORK_JOBS = [
     "Software Developer",
     "Barista",
@@ -23,6 +19,7 @@ const WORK_JOBS = [
 ];
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName('work')
         .setDescription('Work to earn some money'),
@@ -53,7 +50,7 @@ export default {
             const extraWorkShifts = inventory["extra_work"] || 0;
             const hasLaptop = inventory["laptop"] || 0;
 
-            let cooldownActive = now < lastWork + WORK_COOLDOWN;
+            let cooldownActive = now < lastWork + botConfig.economy.cooldowns.work;
             let usedConsumable = false;
 
             if (cooldownActive) {
@@ -61,7 +58,7 @@ export default {
                     inventory["extra_work"] = (inventory["extra_work"] || 0) - 1;
                     usedConsumable = true;
                 } else {
-                    const remaining = lastWork + WORK_COOLDOWN - now;
+                    const remaining = lastWork + botConfig.economy.cooldowns.work - now;
                     throw createError(
                         "Work cooldown active",
                         ErrorTypes.RATE_LIMIT,
@@ -71,12 +68,12 @@ export default {
                 }
             }
 
-            let earned = Math.floor(Math.random() * (MAX_WORK_AMOUNT - MIN_WORK_AMOUNT + 1)) + MIN_WORK_AMOUNT;
+            let earned = Math.floor(Math.random() * (botConfig.economy.workMax - botConfig.economy.workMin + 1)) + botConfig.economy.workMin;
             const job = WORK_JOBS[Math.floor(Math.random() * WORK_JOBS.length)];
 
             let multiplierMessage = "";
             if (hasLaptop > 0) {
-                earned = Math.floor(earned * LAPTOP_MULTIPLIER);
+                earned = Math.floor(earned * botConfig.economy.workLaptopMultiplier);
                 multiplierMessage = "\n💻 **Laptop Bonus:** +50% earnings!";
             }
 
@@ -96,10 +93,11 @@ export default {
                 timestamp: new Date().toISOString()
             });
 
-            const embed = successEmbed(
-                "💼 Work Complete!",
-                `You worked as a **${job}** and earned **$${earned.toLocaleString()}**!${multiplierMessage}`
-            )
+            const embed = createEmbed({
+                title: "💼 Work Complete!",
+                description: `You worked as a **${job}** and earned **$${earned.toLocaleString()}**!${multiplierMessage}`,
+                color: 'money'
+            })
                 .addFields(
                     {
                         name: "New Balance",
@@ -108,7 +106,7 @@ export default {
                     },
                     {
                         name: "Next Work",
-                        value: `<t:${Math.floor((now + WORK_COOLDOWN) / 1000)}:R>`,
+                        value: `<t:${Math.floor((now + botConfig.economy.cooldowns.work) / 1000)}:R>`,
                         inline: true,
                     }
                 )

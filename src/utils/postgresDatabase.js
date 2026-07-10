@@ -53,24 +53,6 @@ class PostgreSQLDatabase {
 
                 if (pgConfig.features.autoCreateTables) {
                     await this.createTables();
-
-                    try {
-                        const columnCheck = await this.pool.query(`
-                            SELECT column_name 
-                            FROM information_schema.columns 
-                            WHERE table_name = 'guilds' AND column_name = 'counters'
-                        `);
-
-                        if (columnCheck.rows.length === 0) {
-                            await this.pool.query(`
-                                ALTER TABLE ${pgConfig.tables.guilds} 
-                                ADD COLUMN counters JSONB DEFAULT '[]'
-                            `);
-                            logger.info('Added counters column to guilds table');
-                        }
-                    } catch (error) {
-                        logger.warn('Could not add counters column to guilds table:', error.message);
-                    }
                 }
 
                 if (pgConfig.migration.enabled) {
@@ -1032,26 +1014,6 @@ class PostgreSQLDatabase {
                          ON CONFLICT (id) DO NOTHING`,
                         [parsedKey.guildId]
                     );
-                    
-                    const columnCheck = await this.pool.query(`
-                        SELECT column_name 
-                        FROM information_schema.columns 
-                        WHERE table_name = '${pgConfig.tables.guilds}' AND column_name = 'counters'
-                    `);
-                    
-                    if (columnCheck.rows.length === 0) {
-                        logger.warn('Counters column does not exist, attempting to add it...');
-                        try {
-                            await this.pool.query(`
-                                ALTER TABLE ${pgConfig.tables.guilds} 
-                                ADD COLUMN counters JSONB DEFAULT '[]'
-                            `);
-                            logger.info('Added counters column to guilds table');
-                        } catch (alterError) {
-                            logger.error('Failed to add counters column:', alterError);
-                            throw new Error(`Counters column missing and could not be created: ${alterError.message}`);
-                        }
-                    }
                     
                     logger.debug('Saving counter data to PostgreSQL', { type: typeof value, isArray: Array.isArray(value) });
 

@@ -1,12 +1,13 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { errorEmbed, successEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
-import { TitanBotError, ErrorTypes, handleInteractionError } from '../../utils/errorHandler.js';
+import { ClypherBotError, ErrorTypes, handleInteractionError } from '../../utils/errorHandler.js';
 import { getGuildGiveaways, deleteGiveaway } from '../../utils/giveaways.js';
 import { logEvent, EVENT_TYPES } from '../../services/loggingService.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName("gdelete")
         .setDescription(
@@ -24,7 +25,7 @@ export default {
         try {
             
             if (!interaction.inGuild()) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Giveaway command used outside guild',
                     ErrorTypes.VALIDATION,
                     'This command can only be used in a server.',
@@ -33,7 +34,7 @@ export default {
             }
 
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'User lacks ManageGuild permission',
                     ErrorTypes.PERMISSION,
                     "You need the 'Manage Server' permission to delete a giveaway.",
@@ -46,7 +47,7 @@ export default {
             const messageId = interaction.options.getString("messageid");
 
             if (!messageId || !/^\d+$/.test(messageId)) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Invalid message ID format',
                     ErrorTypes.VALIDATION,
                     'Please provide a valid message ID.',
@@ -58,7 +59,7 @@ export default {
             const giveaway = giveaways.find(g => g.messageId === messageId);
 
             if (!giveaway) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     `Giveaway not found: ${messageId}`,
                     ErrorTypes.VALIDATION,
                     "No giveaway was found with that message ID.",
@@ -115,7 +116,7 @@ export default {
             );
 
             if (!removedFromDatabase) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     `Failed to delete giveaway from database: ${messageId}`,
                     ErrorTypes.UNKNOWN,
                     'The giveaway could not be removed from the database. Please try again.',
@@ -127,7 +128,7 @@ export default {
             const stillExistsInDatabase = giveawaysAfterDelete.some(g => g.messageId === messageId);
 
             if (stillExistsInDatabase) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     `Giveaway still exists after deletion: ${messageId}`,
                     ErrorTypes.UNKNOWN,
                     'Deletion did not persist in the database. Please try again.',

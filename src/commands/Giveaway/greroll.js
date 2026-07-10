@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { errorEmbed, successEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
-import { TitanBotError, ErrorTypes, handleInteractionError } from '../../utils/errorHandler.js';
+import { ClypherBotError, ErrorTypes, handleInteractionError } from '../../utils/errorHandler.js';
 import { getGuildGiveaways, saveGiveaway } from '../../utils/giveaways.js';
 import { 
     selectWinners,
@@ -12,6 +12,7 @@ import { logEvent, EVENT_TYPES } from '../../services/loggingService.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 export default {
+    skipRegistration: true,
     data: new SlashCommandBuilder()
         .setName("greroll")
         .setDescription("Rerolls the winner(s) for an ended giveaway.")
@@ -27,7 +28,7 @@ export default {
         try {
             
             if (!interaction.inGuild()) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Giveaway command used outside guild',
                     ErrorTypes.VALIDATION,
                     'This command can only be used in a server.',
@@ -36,7 +37,7 @@ export default {
             }
 
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'User lacks ManageGuild permission',
                     ErrorTypes.PERMISSION,
                     "You need the 'Manage Server' permission to reroll a giveaway.",
@@ -49,7 +50,7 @@ export default {
             const messageId = interaction.options.getString("messageid");
 
             if (!messageId || !/^\d+$/.test(messageId)) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     'Invalid message ID format',
                     ErrorTypes.VALIDATION,
                     'Please provide a valid message ID.',
@@ -65,7 +66,7 @@ export default {
             const giveaway = giveaways.find(g => g.messageId === messageId);
 
             if (!giveaway) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     `Giveaway not found: ${messageId}`,
                     ErrorTypes.VALIDATION,
                     "No giveaway was found with that message ID in the database.",
@@ -74,7 +75,7 @@ export default {
             }
 
             if (!giveaway.isEnded && !giveaway.ended) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     `Giveaway still active: ${messageId}`,
                     ErrorTypes.VALIDATION,
                     "This giveaway is still active. Please use `/gend` to end it first.",
@@ -85,7 +86,7 @@ export default {
             const participants = giveaway.participants || [];
             
             if (participants.length < giveaway.winnerCount) {
-                throw new TitanBotError(
+                throw new ClypherBotError(
                     `Insufficient participants for reroll: ${participants.length} < ${giveaway.winnerCount}`,
                     ErrorTypes.VALIDATION,
                     "Not enough entries to pick the required number of winners.",
