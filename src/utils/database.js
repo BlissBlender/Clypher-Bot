@@ -5,6 +5,9 @@ import { logger } from './logger.js';
 import { BotConfig } from '../config/bot.js';
 import { normalizeGuildConfig, validateGuildConfigOrThrow } from './schemas.js';
 import { DEFAULT_GUILD_CONFIG } from './constants.js';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
 
 export {
     db,
@@ -460,6 +463,40 @@ export async function updateWelcomeConfig(client, guildId, updates) {
 /** Maximum supported level — single source of truth, imported by services/leveling.js */
 export const MAX_LEVEL = 1000;
 
+// ── File-based persistence for leveling data (survives Render restarts) ──
+
+const LEVELING_DATA_DIR = path.resolve('data');
+const LEVELING_DATA_FILE = path.join(LEVELING_DATA_DIR, 'leveling.json');
+
+function levelingDataFileExists() {
+  try {
+    return existsSync(LEVELING_DATA_FILE);
+  } catch {
+    return false;
+  }
+}
+
+async function loadLevelingFile() {
+  try {
+    if (levelingDataFileExists()) {
+      const raw = await readFile(LEVELING_DATA_FILE, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (error) {
+    logger.warn('Could not load leveling data file:', error.message);
+  }
+  return {};
+}
+
+async function saveLevelingFile(data) {
+  try {
+    await mkdir(LEVELING_DATA_DIR, { recursive: true });
+    await writeFile(LEVELING_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    logger.warn('Could not save leveling data file:', error.message);
+  }
+}
+
 /** Legacy key without `guild:` prefix — for backward compatibility */
 function getLegacyUserLevelKey(guildId, userId) {
   return `${guildId}:leveling:users:${userId}`;
@@ -504,6 +541,21 @@ export async function getUserLevelData(client, guildId, userId) {
         }
 
         if (!raw) {
+            // In-memory DB returned nothing — try file backup (survives Render restarts)
+            const fileData = await loadLevelingFile();
+            const userKey = `${guildId}:${userId}`;
+            const fileBackup = fileData[userKey];
+            if (fileBackup) {
+                raw = fileBackup;
+                // Restore to in-memory DB for future fast access
+                if (client.db?.set) {
+                    await client.db.set(correctKey, raw);
+                }
+                logger.info(`Restored leveling data for user ${userId} from file backup`);
+            }
+        }
+
+        if (!raw) {
             return {
                 xp: 0,
                 level: 0,
@@ -540,10 +592,17 @@ export async function saveUserLevelData(client, guildId, userId, data) {
 
         if (client.db?.set) {
             await client.db.set(correctKey, sanitized);
-            // Clean up legacy key if it exists
-            if (client.db.delete) {
-                await client.db.delete(legacyKey).catch(() => {});
-            }
+        }
+
+        // Also persist to file so data survives in-memory restarts
+        const fileData = await loadLevelingFile();
+        const userKey = `${guildId}:${userId}`;
+        fileData[userKey] = sanitized;
+        await saveLevelingFile(fileData);
+
+        // Clean up legacy key if it exists
+        if (client.db.delete) {
+            await client.db.delete(legacyKey).catch(() => {});
         }
         return true;
     } catch (error) {
@@ -561,6 +620,15 @@ export async function deleteUserLevelData(client, guildId, userId) {
             await client.db.delete(correctKey);
             await client.db.delete(legacyKey).catch(() => {});
         }
+
+        // Also remove from file backup
+        const fileData = await loadLevelingFile();
+        const userKey = `${guildId}:${userId}`;
+        if (fileData[userKey]) {
+            delete fileData[userKey];
+            await saveLevelingFile(fileData);
+        }
+
         return true;
     } catch (error) {
         logger.error(`Error deleting level data for user ${userId} in guild ${guildId}:`, error);
