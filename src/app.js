@@ -14,7 +14,6 @@ import { checkGiveaways } from './services/giveawayService.js';
 import { loadCommands, registerCommands as registerSlashCommands } from './handlers/commandLoader.js';
 import { initializeMusic } from './services/music/riffySetup.js';
 import { shutdownMusic } from './services/music/playerHandler.js';
-import pkg from '../package.json' with { type: 'json' };
 import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/schemaVersion.js';
 import { loadAllGuildThemes } from './services/themeService.js';
 
@@ -166,18 +165,9 @@ class ClypherBot extends Client {
     });
 
     app.get('/health', (req, res) => {
-      const dbStatus = this.db?.getStatus?.() || { isDegraded: 'unknown' };
-      const status = {
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        database: {
-          connected: dbStatus.connectionType !== 'none',
-          degraded: dbStatus.isDegraded,
-          type: dbStatus.connectionType
-        }
-      };
-      res.status(200).json(status);
+      // Minimal response for ping/cronjob services (cron-job.org, UptimeRobot, etc.)
+      // These services often reject responses larger than 1KB
+      res.status(200).type('text/plain').send('ok');
     });
 
     app.get('/ready', (req, res) => {
@@ -212,11 +202,8 @@ class ClypherBot extends Client {
     });
 
     app.get('/', (req, res) => {
-      res.status(200).json({ 
-        message: 'ClypherBot System Online',
-        version: pkg.version,
-        timestamp: new Date().toISOString()
-      });
+      // Root endpoint for ping services — keep it tiny
+      res.status(200).type('text/plain').send('ok');
     });
 
     const startServer = (port, attempt = 0) => {
