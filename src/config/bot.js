@@ -473,16 +473,11 @@ export function validateConfig(config) {
     errors.push("Client ID is required (CLIENT_ID environment variable)");
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    if (!process.env.POSTGRES_HOST) {
-      errors.push("PostgreSQL host is required in production (POSTGRES_HOST environment variable)");
-    }
-    if (!process.env.POSTGRES_USER) {
-      errors.push("PostgreSQL user is required in production (POSTGRES_USER environment variable)");
-    }
-    if (!process.env.POSTGRES_PASSWORD) {
-      errors.push("PostgreSQL password is required in production (POSTGRES_PASSWORD environment variable)");
-    }
+  // PostgreSQL is optional — the database wrapper falls back to in-memory storage
+  // when PostgreSQL is unavailable, so we only warn, not fail.
+  if (process.env.NODE_ENV === 'production' && !process.env.POSTGRES_HOST && !process.env.POSTGRES_URL && !process.env.DATABASE_URL) {
+    logger.warn('⚠️  No PostgreSQL configured. Bot will run with in-memory storage (data lost on restart).');
+    logger.warn('   Set POSTGRES_HOST (or POSTGRES_URL/DATABASE_URL) to enable persistent storage.');
   }
 
   return errors;
