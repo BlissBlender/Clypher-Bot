@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChannelType } from 'discord.js';
 import { logger } from '../../utils/logger.js';
-import { handleInteractionError } from '../../utils/errorHandler.js';
+import { handleInteractionError, ErrorTypes, replyUserError } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 import report from './modules/report.js';

@@ -3,7 +3,7 @@ import { createEmbed, successEmbed, warningEmbed } from '../../utils/embeds.js';
 import { logModerationAction } from '../../utils/moderation.js';
 import { logger } from '../../utils/logger.js';
 import { ModerationService } from '../../services/moderationService.js';
-import { ClypherBotError } from '../../utils/errorHandler.js';
+import { ClypherBotError, ErrorTypes, replyUserError } from '../../utils/errorHandler.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {

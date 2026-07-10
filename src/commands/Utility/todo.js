@@ -2,7 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, PermissionsBitField, ChannelT
 import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
 import { getFromDb, setInDb } from '../../utils/database.js';
 import { logger } from '../../utils/logger.js';
-import { handleInteractionError } from '../../utils/errorHandler.js';
+import { handleInteractionError, ErrorTypes, replyUserError } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import crypto from 'crypto';
 
@@ -464,7 +464,7 @@ export default {
                     }
 
                     if (task.completed) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Task #${task.id} is already completed.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: `Task #${task.id} is already completed.` });
                     }
                     
                     task.completed = true;

@@ -5,6 +5,7 @@ import { getFromDb, setInDb, deleteFromDb } from '../../utils/database.js';
 import { sanitizeInput } from '../../utils/validation.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+import { ErrorTypes, replyUserError } from '../../utils/errorHandler.js';
 function getUserNotesKey(guildId, userId) {
     return `moderation_user_notes_${guildId}_${userId}`;
 }
@@ -209,7 +210,7 @@ async function handleRemoveNote(interaction, targetUser, notes, guildId) {
 const index = interaction.options.getInteger("index") - 1;
 
     if (index < 0 || index >= notes.length) {
-        return await replyUserError(interaction, { type: ErrorTypes.VALIDATION, message: 'Please provide a valid note index (1-${notes.length}).' });
+        return await replyUserError(interaction, { type: ErrorTypes.VALIDATION, message: `Please provide a valid note index (1-${notes.length}).` });
     }
 
     const removedNote = notes[index];

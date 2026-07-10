@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { infoEmbed, successEmbed } from '../../utils/embeds.js';
-import { withErrorHandling } from '../../utils/errorHandler.js';
+import { withErrorHandling, ErrorTypes, replyUserError } from '../../utils/errorHandler.js';
 import { verifyUser } from '../../services/verificationService.js';
 import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';

@@ -55,8 +55,7 @@ export default {
         .addSubcommand((sub) =>
             sub
                 .setName('draw')
-                .setDescription('Draw the lottery winner (Admin only)')
-                .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+                .setDescription('Draw the lottery winner (Admin only)'),
         ),
 
     execute: withErrorHandling(async (interaction, config, client) => {
