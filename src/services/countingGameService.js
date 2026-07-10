@@ -198,6 +198,23 @@ function getStorageKey(guildId) {
   return `${COUNTING_GAME_KEY_PREFIX}${guildId}`;
 }
 
+/**
+ * Check whether a message's content matches the expected format of
+ * the configured counting system (decimal, binary, hex, etc.)
+ * without caring if it's the correct next number.
+ *
+ * Example: counting system is "decimal" → only messages containing
+ * purely digits 0-9 pass; "hello" or "A5" return false.
+ */
+export function matchesCountingFormat(content, systemKey) {
+  const system = COUNTING_SYSTEMS[systemKey];
+  if (!system) return false;
+  const trimmed = (content || '').trim();
+  if (!trimmed) return false;
+  const parsed = system.parse(trimmed);
+  return parsed !== null;
+}
+
 export async function getCountingGameConfig(client, guildId) {
   try {
     const rawState = await client.db.get(getStorageKey(guildId));

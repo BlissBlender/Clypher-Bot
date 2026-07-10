@@ -16,6 +16,7 @@ import {
   getCountingGameConfig,
   saveCountingGameConfig,
   isValidCountingMessage,
+  matchesCountingFormat,
   recordCorrectCount,
 } from '../services/countingGameService.js';
 
@@ -135,6 +136,13 @@ async function handleCountingGame(message, client) {
     }
 
     const content = message.content.trim();
+
+    // Ignore messages that don't match the counting system's format
+    // (e.g. random chat in decimal mode that isn't a number)
+    if (!matchesCountingFormat(content, config.system || 'decimal')) {
+      return false;
+    }
+
     const validCount = isValidCountingMessage(content, config);
     const invalidAttempt = !validCount || message.author.id === config.lastUserId;
 
