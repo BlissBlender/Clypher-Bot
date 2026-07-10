@@ -11,6 +11,7 @@ import { getGuildConfig } from '../services/guildConfig.js';
 import { enforceAbuseProtection, formatCooldownDuration } from '../utils/abuseProtection.js';
 import { createEmbed } from '../utils/embeds.js';
 import { isCommandEnabled } from '../services/commandAccessService.js';
+import { handleAFKMention } from '../services/afkService.js';
 import {
   getCountingGameConfig,
   saveCountingGameConfig,
@@ -28,6 +29,9 @@ export default {
       if (message.author.bot || !message.guild) return;
 
       logger.debug(`Message received from ${message.author.tag}: ${message.content}`);
+
+      // Handle AFK mentions first — works in every channel, including counting channels
+      await handleAFKMention(message, client);
 
       const countingProcessed = await handleCountingGame(message, client);
       if (countingProcessed) {

@@ -26,6 +26,15 @@ export async function handleAFKMention(message, client) {
     const authorAFK = await getAFK(client, message.guild.id, message.author.id);
     if (authorAFK) {
         await clearAFK(client, message.guild.id, message.author.id);
+
+        // Restore nickname by removing the [AFK] prefix if it's still there
+        if (message.member?.nickname?.startsWith('[AFK] ')) {
+            const originalName = message.member.nickname.slice(6).trim();
+            if (originalName) {
+                await message.member.setNickname(originalName).catch(() => {});
+            }
+        }
+
         const { createEmbed } = await import('../utils/embeds.js');
         await message.reply({
             embeds: [createEmbed({
