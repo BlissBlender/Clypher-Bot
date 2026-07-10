@@ -135,7 +135,9 @@ async function handleCountingGame(message, client) {
     const invalidAttempt = !validCount || message.author.id === config.lastUserId;
 
     if (invalidAttempt) {
-      await message.delete().catch(() => {});
+      // React with ❌ so the user sees immediate feedback
+      await message.react('❌').catch(() => {});
+
       await saveCountingGameConfig(client, message.guild.id, {
         ...config,
         nextNumber: 1,
@@ -151,7 +153,19 @@ async function handleCountingGame(message, client) {
       return true;
     }
 
+    // Capture the expected number before it gets incremented by recordCorrectCount
+    const expectedNumber = config.nextNumber;
+
     await recordCorrectCount(client, message.guild.id, message.author.id);
+
+    // React with ✅ for correct count
+    await message.react('✅').catch(() => {});
+
+    // Celebrate when the count reaches 100
+    if (expectedNumber === 100) {
+      await message.react('🎉').catch(() => {});
+    }
+
     return true;
   } catch (error) {
     logger.error('Error handling counting game:', error);

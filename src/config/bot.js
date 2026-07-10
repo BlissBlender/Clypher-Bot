@@ -517,8 +517,15 @@ export function getColor(path, fallback = "#99AAB5", overrides = null) {
     return parseInt(path.replace("#", ""), 16);
   }
 
+  // Undefined/null/not-a-string — return fallback
+  if (typeof path !== "string") {
+    return typeof fallback === "string" && fallback.startsWith("#")
+      ? parseInt(fallback.replace("#", ""), 16)
+      : fallback;
+  }
+
   // Check per-guild overrides first (if provided)
-  if (overrides && typeof path === "string") {
+  if (overrides) {
     const overrideResult = path
       .split(".")
       .reduce((obj, key) => (obj && obj[key] !== undefined ? obj[key] : undefined), overrides);
