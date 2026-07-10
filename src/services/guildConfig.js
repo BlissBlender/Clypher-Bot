@@ -21,6 +21,63 @@ const GUILD_CONFIG_DEFAULTS = {
         ignore: { users: [], channels: [] },
         enabledEvents: {},
     },
+
+    // ── Moderation Dashboard (antilink, antispam, automod) ──
+    moderation: {
+        enabled: false,
+        logChannelId: null,
+        ignoredRoles: [],
+        ignoredChannels: [],
+
+        // Anti-Link — block Discord invites and suspicious URLs
+        antiLink: {
+            enabled: false,
+            action: 'warn',                           // warn | timeout | kick | none
+            allowedInviteCodes: [],                    // specific Discord invite codes to allow
+            whitelistedDomains: [],                    // domains always allowed
+            minViolationsForAction: 3,                 // auto-action after N violations
+        },
+
+        // Anti-Spam — detect rapid messaging and mention spam
+        antiSpam: {
+            enabled: false,
+            maxMessages: 5,                            // max messages in the time window
+            windowMs: 5000,                            // sliding window (milliseconds)
+            action: 'timeout',                         // warn | timeout | kick
+            timeoutDurationMs: 60000,                  // 1 minute timeout
+            maxMentions: 4,                            // max @mentions per message
+            minViolationsForAction: 3,
+        },
+
+        // Auto-Mod — bad words, ALL-CAPS spam, repeated text
+        autoMod: {
+            enabled: false,
+            blockedWords: [],                          // list of banned words/phrases
+            blockedPatterns: [],                       // regex patterns to block
+            antiCaps: {
+                enabled: false,
+                minLength: 8,                          // only check messages this long or longer
+                capsThreshold: 70,                     // % of uppercase characters required to trigger
+                action: 'warn',
+            },
+            antiRepeatedText: {
+                enabled: false,
+                maxConsecutiveChars: 8,                // e.g. "aaaaaa" triggers
+                action: 'warn',
+            },
+        },
+
+        // Progressive strikes — escalate punishment automatically
+        strikes: {
+            enabled: false,
+            decayMs: 86400000,                         // strike expires after 24h
+            tiers: [
+                { threshold: 3, action: 'timeout', durationMs: 60000 },
+                { threshold: 5, action: 'timeout', durationMs: 300000 },
+                { threshold: 7, action: 'kick' },
+            ],
+        },
+    },
 };
 
 export const getGuildConfig = wrapServiceBoundary(async function getGuildConfig(client, guildId, context = {}) {

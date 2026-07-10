@@ -19,6 +19,7 @@ import {
   matchesCountingFormat,
   recordCorrectCount,
 } from '../services/countingGameService.js';
+import { evaluateMessage } from '../services/moderationService.js';
 
 const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
 const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
@@ -33,6 +34,13 @@ export default {
 
       // Handle AFK mentions first — works in every channel, including counting channels
       await handleAFKMention(message, client);
+
+      // ── Moderation: anti-link, anti-spam, auto-mod ──
+      const modViolations = await evaluateMessage(message, client);
+      if (modViolations.length > 0) {
+        logger.debug(`[Moderation] ${message.author.tag} flagged: ${modViolations.map(v => v.type).join(', ')}`);
+        return; // Stop processing flagged messages (no XP, no prefix commands)
+      }
 
       const countingProcessed = await handleCountingGame(message, client);
       if (countingProcessed) {
