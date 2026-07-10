@@ -1,7 +1,14 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from 'discord.js';
+import { createEmbed } from '../../../utils/embeds.js';
 import { shopItems } from '../../../config/shop/items.js';
-import { getColor } from '../../../config/bot.js';
 import { logger } from '../../../utils/logger.js';
+
+const TYPE_EMOJIS = {
+  consumable: '🍯',
+  upgrade: '⚡',
+  tool: '⛏️',
+  role: '🎭',
+};
 
 export default {
     async execute(interaction, config, client) {
@@ -14,19 +21,27 @@ export default {
             const createShopEmbed = (page) => {
                 const startIndex = (page - 1) * ITEMS_PER_PAGE;
                 const pageItems = shopItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-                const embed = new EmbedBuilder()
-                    .setTitle('Store')
-                    .setColor(getColor('primary'))
-                    .setDescription('Use `/buy item_id:<id> quantity:<amount>` to purchase an item.');
-                pageItems.forEach(item => {
-                    embed.addFields({
-                        name: `${item.name} (${item.id})`,
-                        value: `**Type:** ${item.type}\n **Price:** $${item.price.toLocaleString()}\n${item.description}`,
-                        inline: false,
-                    });
+
+                const fieldItems = pageItems.map(item => ({
+                    name: `${TYPE_EMOJIS[item.type] || '📦'} ${item.name} \`(${item.id})\``,
+                    value: `${item.description}\n💵 **Price:** $${item.price.toLocaleString()} \u2022 📂 **Type:** ${item.type}`,
+                    inline: false,
+                }));
+
+                return createEmbed({
+                    title: '🛒 Shop',
+                    description: 'Use `/buy item_id:<id> quantity:<amount>` to purchase an item.',
+                    color: 'money',
+                    fields: [
+                        {
+                            name: `📋 Items (Page ${page}/${totalPages})`,
+                            value: `\u200b`,
+                            inline: false,
+                        },
+                        ...fieldItems,
+                    ],
+                    footer: `Page ${page}/${totalPages} \u2022 ${shopItems.length} items total`,
                 });
-                embed.setFooter({ text: `Page ${page}/${totalPages}` });
-                return embed;
             };
 
             const createShopComponents = (page) => {

@@ -255,7 +255,7 @@ export const botConfig = {
 
     // ── Default level-up message (admins override via /level setup) ──
     //   Placeholders: {user}, {level}, {xp}, {xpNeeded}
-    levelUpMessage: '{user} has leveled up to level {level}!',
+    levelUpMessage: '🎉 {user} leveled up to **Level {level}**! Keep it up! 💪',
 
     // ── Announcement settings ──
     announceLevelUp: true,
@@ -371,8 +371,8 @@ export const botConfig = {
   // WELCOME / GOODBYE MESSAGES
   // =========================
   welcome: {
-    defaultWelcomeMessage: "Welcome {user} to {server}! We now have {memberCount} members!",
-    defaultGoodbyeMessage: "{user} has left the server. We now have {memberCount} members.",
+    defaultWelcomeMessage: "🎉 Welcome **{user}** to **{server}**! We're now **{memberCount}** members strong!",
+    defaultGoodbyeMessage: "👋 **{user}** has left **{server}**. We now have **{memberCount}** members.",
     defaultWelcomeChannel: null,
     defaultGoodbyeChannel: null,
   },

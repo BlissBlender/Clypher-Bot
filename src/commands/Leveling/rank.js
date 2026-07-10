@@ -1,8 +1,8 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getUserLevelData, getLevelingConfig, getXpForLevel } from '../../services/leveling.js';
-import { getColor } from '../../config/bot.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
@@ -26,9 +26,10 @@ export default {
       if (!levelingConfig?.enabled) {
         await InteractionHelper.safeEditReply(interaction, {
           embeds: [
-            new EmbedBuilder()
-              .setColor(getColor('warning'))
-              .setDescription('The leveling system is currently disabled on this server.')
+            createEmbed({
+              description: '⚙️ The leveling system is currently disabled on this server.',
+              color: 'warning',
+            })
           ],
           flags: MessageFlags.Ephemeral
         });
@@ -60,32 +61,33 @@ export default {
       const progress = xpNeeded > 0 ? Math.floor((safeUserData.xp / xpNeeded) * 100) : 0;
       const progressBar = createProgressBar(progress, 20);
 
-      const embed = new EmbedBuilder()
-        .setTitle(`${member.displayName}'s Rank`)
-        .setThumbnail(member.displayAvatarURL({ dynamic: true }))
-        .addFields(
+      const embed = createEmbed({
+        title: `📊 ${member.displayName}'s Rank`,
+        color: 'success',
+        thumbnail: member.displayAvatarURL({ dynamic: true }),
+        fields: [
           {
-            name: 'Level',
-            value: safeUserData.level.toString(),
-            inline: true
+            name: '🏆 Level',
+            value: `**${safeUserData.level}**`,
+            inline: true,
           },
           {
-            name: 'XP',
-            value: `${safeUserData.xp}/${xpNeeded}`,
-            inline: true
+            name: '✨ XP',
+            value: `**${safeUserData.xp}** / **${xpNeeded}**`,
+            inline: true,
           },
           {
-            name: 'Total XP',
-            value: safeUserData.totalXp.toString(),
-            inline: true
+            name: '📈 Total XP',
+            value: `**${safeUserData.totalXp.toLocaleString()}**`,
+            inline: true,
           },
           {
-            name: `Progress to Level ${safeUserData.level + 1}`,
-            value: `${progressBar} ${progress}%`
-          }
-        )
-        .setColor(getColor('success'))
-        .setTimestamp();
+            name: `🎯 Progress to Level ${safeUserData.level + 1}`,
+            value: `${progressBar} **${progress}%**`,
+            inline: false,
+          },
+        ],
+      });
 
       await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
       logger.debug(`Rank checked for user ${targetUser.id} in guild ${interaction.guildId}`);

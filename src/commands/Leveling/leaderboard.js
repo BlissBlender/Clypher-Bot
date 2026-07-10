@@ -1,8 +1,8 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
+import { createEmbed } from '../../utils/embeds.js';
 import { handleInteractionError, ClypherBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getLeaderboard, getLevelingConfig, getXpForLevel } from '../../services/leveling.js';
-import { getColor } from '../../config/bot.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
@@ -21,9 +21,10 @@ export default {
       if (!levelingConfig?.enabled) {
         await InteractionHelper.safeEditReply(interaction, {
           embeds: [
-            new EmbedBuilder()
-              .setColor(getColor('warning'))
-              .setDescription('The leveling system is currently disabled on this server.')
+            createEmbed({
+              description: '⚙️ The leveling system is currently disabled on this server.',
+              color: 'warning',
+            })
           ],
           flags: MessageFlags.Ephemeral
         });
@@ -36,15 +37,16 @@ export default {
         throw new ClypherBotError(
           'No leaderboard data found',
           ErrorTypes.DATABASE,
-          'No level data found yet. Start chatting to gain XP!'
+          '💬 No level data found yet. Start chatting to gain XP!'
         );
       }
 
-      const embed = new EmbedBuilder()
-        .setTitle('Level Leaderboard')
-        .setColor(getColor('success'))
-        .setDescription("Top 10 most active members in this server:")
-        .setTimestamp();
+      const embed = createEmbed({
+        title: '🏆 Level Leaderboard',
+        color: 'success',
+        description: '📋 **Top 10 most active members:**',
+        fields: [],
+      });
 
       const leaderboardText = await Promise.all(
         leaderboard.map(async (user, index) => {
