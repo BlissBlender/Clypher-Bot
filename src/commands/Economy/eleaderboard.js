@@ -52,9 +52,13 @@ export default {
             } else {
                 // Fallback: scan all guild members (in-memory DB doesn't support .list())
                 try {
-                    const members = await interaction.guild.members.fetch().catch(() => new Map());
-                    for (const [userId] of members) {
-                        if (interaction.guild.members.cache.get(userId)?.user.bot) continue;
+                    // Use cached members first (no API call), fall back to fetch
+                    let members = interaction.guild.members.cache;
+                    if (!members.size) {
+                        members = await interaction.guild.members.fetch().catch(() => new Map());
+                    }
+                    for (const [userId, member] of members) {
+                        if (member.user.bot) continue;
                         const userData = await client.db.get(`${economyPrefix}${userId}`);
                         if (userData && ((userData.wallet || 0) > 0 || (userData.bank || 0) > 0)) {
                             allUserData.push({

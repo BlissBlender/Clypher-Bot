@@ -105,10 +105,14 @@ export async function getLeaderboard(client, guildId, limit = 10) {
     // (in-memory DBs like the Render fallback don't support .list(), so we need
     //  to scan all guild members to build the leaderboard)
     if (!levelUserIds.length) {
-      const members = await guild.members.fetch().catch((error) => {
-        logger.error(`Failed to fetch members for guild ${guildId}:`, error);
-        return new Map();
-      });
+      // Use cached members first (no API call needed), fall back to fetch
+      let members = guild.members.cache;
+      if (!members.size) {
+        members = await guild.members.fetch().catch((error) => {
+          logger.error(`Failed to fetch members for guild ${guildId}:`, error);
+          return new Map();
+        });
+      }
 
       for (const [userId, member] of members) {
         if (member.user.bot) continue;
