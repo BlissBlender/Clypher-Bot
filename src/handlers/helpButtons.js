@@ -44,7 +44,7 @@ export const helpBugReportButton = {
         const githubButton = new ButtonBuilder()
             .setLabel('🐛 Report Bug on GitHub')
             .setStyle(ButtonStyle.Link)
-            .setURL('https://github.com/codebymitch/ClypherBot/issues');
+            .setURL('https://github.com/BlissBlender/Clypher-Bot/issues');
 
         const bugRow = new ActionRowBuilder().addComponents(githubButton);
 
