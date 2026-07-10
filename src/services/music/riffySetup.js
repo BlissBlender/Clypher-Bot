@@ -7,9 +7,37 @@ import { setupPlayerHandler } from './playerHandler.js';
 const require = createRequire(import.meta.url);
 const { Riffy } = require('riffy');
 
+/**
+ * Check whether Lavalink is pointing at a real remote host (not localhost).
+ * On Render / Railway there is no local Lavalink, so we skip music entirely
+ * to avoid infinite ECONNREFUSED reconnect loops.
+ */
+function isLavalinkConfiguredForProduction() {
+    if (!lavalinkConfig.nodes?.length) return false;
+
+    // If ALL nodes point at localhost/127.0.0.1 and we're in production, skip
+    const allLocal = lavalinkConfig.nodes.every((n) => {
+        const host = (n.host || '').toLowerCase();
+        return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    });
+
+    if (allLocal && process.env.NODE_ENV === 'production') {
+        logger.warn('Lavalink is configured with localhost in production — skipping music initialization.');
+        logger.warn('To enable music, deploy a Lavalink server and set LAVALINK_HOST to its address.');
+        return false;
+    }
+
+    return true;
+}
+
 export function initializeMusic(client) {
     if (!lavalinkConfig.nodes?.length) {
-        logger.error('No Lavalink nodes configured. Set LAVALINK_HOST (or LAVALINK_NODES) in your environment.');
+        logger.warn('No Lavalink nodes configured. Music commands will be unavailable.');
+        logger.warn('To enable music, deploy a Lavalink server and set LAVALINK_HOST in your environment.');
+        return;
+    }
+
+    if (!isLavalinkConfiguredForProduction()) {
         return;
     }
 
