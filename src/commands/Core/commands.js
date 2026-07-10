@@ -16,6 +16,7 @@ import {
   buildCommandRegistry,
   isProtectedCommand,
 } from '../../services/commandAccessService.js';
+import { registerCommands as forceRegisterCommands } from '../../handlers/commandLoader.js';
 import {
   buildDashboardView,
   handleDashboardComponent,
@@ -99,6 +100,11 @@ export default {
             .setRequired(true)
             .setAutocomplete(true),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('sync')
+        .setDescription('Force re-register all slash commands with Discord'),
     ),
   category: 'Core',
 
@@ -214,6 +220,25 @@ export default {
         });
 
         return;
+      }
+
+      if (subcommand === 'sync') {
+        const deferred = await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
+        if (!deferred) return;
+
+        try {
+          const { clientId, guildId, multiGuild } = client.config.bot;
+          await forceRegisterCommands(client, { clientId, guildId, multiGuild });
+          return InteractionHelper.safeEditReply(interaction, {
+            embeds: [successEmbed('✅ Commands Synced', 'All slash commands have been re-registered with Discord. It may take a few minutes for changes to appear.')],
+          });
+        } catch (error) {
+          logger.error('Force command sync failed', { error: error.message });
+          return replyUserError(interaction, {
+            type: ErrorTypes.UNKNOWN,
+            message: `Failed to sync commands: ${error.message}`,
+          });
+        }
       }
 
       const scope = interaction.options.getString('scope');
