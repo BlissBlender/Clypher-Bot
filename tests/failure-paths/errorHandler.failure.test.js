@@ -107,13 +107,13 @@ test('Discord API response failure path logs response_unavailable when API says 
   }
 });
 
-test('buildUserErrorEmbed uses plain titles and typed colors', () => {
+test('buildUserErrorEmbed uses emoji-enriched titles and typed colors', () => {
   const validationEmbed = buildUserErrorEmbed('validation', 'Check your input.');
-  assert.equal(validationEmbed.data.title, 'Invalid Input');
+  assert.equal(validationEmbed.data.title, '❌ Invalid Input');
   assert.equal(validationEmbed.data.description, 'Check your input.');
 
   const rateLimitEmbed = buildUserErrorEmbed('rate_limit', 'Wait a moment.');
-  assert.equal(rateLimitEmbed.data.title, 'Too Fast');
+  assert.equal(rateLimitEmbed.data.title, '⏳ Too Fast');
 });
 
 test('handleInteractionError does not add tip fields', async () => {
@@ -129,7 +129,7 @@ test('handleInteractionError does not add tip fields', async () => {
   const embed = replyPayload?.embeds?.[0];
   assert.ok(embed);
   assert.equal(embed.data.fields?.length ?? 0, 0, 'error embeds should not include tip fields');
-  assert.equal(embed.data.title, 'Too Fast');
+  assert.equal(embed.data.title, '⏳ Too Fast');
 });
 
 test('replyUserError sends ephemeral replies for fresh interactions', async () => {
@@ -146,7 +146,7 @@ test('replyUserError sends ephemeral replies for fresh interactions', async () =
   });
 
   assert.equal(replyPayload?.flags, MessageFlags.Ephemeral);
-  assert.equal(replyPayload?.embeds?.[0]?.data?.title, 'Permission Denied');
+  assert.equal(replyPayload?.embeds?.[0]?.data?.title, '🚫 Permission Denied');
   assert.equal(replyPayload?.embeds?.[0]?.data?.description, 'You need Manage Server.');
 });
 
@@ -165,5 +165,5 @@ test('replyUserError uses editReply when interaction is deferred', async () => {
   });
 
   assert.ok(editPayload);
-  assert.equal(editPayload.embeds?.[0]?.data?.title, 'Invalid Input');
+  assert.equal(editPayload.embeds?.[0]?.data?.title, '❌ Invalid Input');
 });

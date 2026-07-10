@@ -2,46 +2,45 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmbed } from '../src/utils/embeds.js';
 
-test('createEmbed should ignore unimportant footer text and should not add a timestamp by default', () => {
+test('createEmbed sets footer text and adds timestamp by default', () => {
   const embed = createEmbed({
     title: 'Test',
     description: 'Hello world',
-    footer: 'Footer text should move into description'
+    footer: 'Custom footer here'
   });
 
   const data = embed.toJSON();
-  assert.equal(data.footer, undefined);
-  assert.equal(data.timestamp, undefined);
+  assert.equal(data.footer?.text, 'Custom footer here');
+  assert.ok(data.timestamp, 'timestamp should be set by default');
   assert.equal(data.description, 'Hello world');
 });
 
-test('createEmbed should set important footer text on the embed footer', () => {
+test('createEmbed uses branded default footer when no footer is provided', () => {
   const embed = createEmbed({
     title: 'Test',
-    description: 'Hello world',
-    footer: 'Dashboard closes after 10 minutes of inactivity'
+    description: 'Hello world'
   });
 
   const data = embed.toJSON();
-  assert.equal(data.footer?.text, 'Dashboard closes after 10 minutes of inactivity');
-  assert.equal(data.timestamp, undefined);
+  assert.equal(data.footer?.text, '✨ Clypher Bot');
+  assert.ok(data.timestamp, 'timestamp should be set by default');
   assert.equal(data.description, 'Hello world');
 });
 
-test('setFooter should place important footer text on the embed footer', () => {
+test('setFooter allows any footer text to appear on embed', () => {
   const embed = createEmbed({
     title: 'Footer Test',
     description: 'Base description.'
   });
 
-  embed.setFooter({ text: 'Dashboard closes after 10 minutes of inactivity' });
+  embed.setFooter({ text: 'Requested by mrpinkify' });
   const data = embed.toJSON();
 
-  assert.equal(data.footer?.text, 'Dashboard closes after 10 minutes of inactivity');
+  assert.equal(data.footer?.text, 'Requested by mrpinkify');
   assert.equal(data.description, 'Base description.');
 });
 
-test('setFooter should keep footer text at the bottom when fields are added after footer', () => {
+test('setFooter works alongside fields', () => {
   const embed = createEmbed({
     title: 'Dashboard',
     description: 'Manage settings for **Test Server**.',
@@ -59,15 +58,13 @@ test('setFooter should keep footer text at the bottom when fields are added afte
   assert.equal(data.fields?.length, 2);
 });
 
-test('setFooter should ignore unimportant footer text', () => {
+test('createEmbed can omit timestamp by passing timestamp: false', () => {
   const embed = createEmbed({
-    title: 'Footer Test',
-    description: 'Base description.'
+    title: 'No Timestamp',
+    description: 'Test',
+    timestamp: false,
   });
 
-  embed.setFooter({ text: 'Requested by mrpinkify' });
   const data = embed.toJSON();
-
-  assert.equal(data.footer, undefined);
-  assert.equal(data.description, 'Base description.');
+  assert.equal(data.timestamp, undefined);
 });

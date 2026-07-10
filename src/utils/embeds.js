@@ -1,116 +1,93 @@
-// embeds.js
+// embeds.js — Clypher Bot premium embed system
 
 import { EmbedBuilder } from 'discord.js';
 import { getColor } from '../config/bot.js';
 import { getGuildOverrides } from '../services/themeService.js';
 
-const EMOJI_REGEX = /[\p{Extended_Pictographic}\uFE0F]/gu;
-const EMBED_FOOTER_SYMBOL = Symbol('titanbotFooterText');
-const EMBED_BASE_DESCRIPTION_SYMBOL = Symbol('titanbotBaseDescription');
+const EMBED_FOOTER_SYMBOL = Symbol('clypherFooterText');
+const EMBED_BASE_DESCRIPTION_SYMBOL = Symbol('clypherBaseDescription');
 
-function sanitizeEmbedText(text = '') {
-  if (typeof text !== 'string') {
-    return text;
-  }
+/** ── Text normalisation ────────────────────────────────── */
 
+function normalizeText(text = '') {
+  if (typeof text !== 'string') return text;
   return text
-    .replace(EMOJI_REGEX, '')
-    .replace(/[ \t]+/g, ' ')  // Replace consecutive spaces/tabs with single space
-    .replace(/[ \t]\n/g, '\n')  // Remove spaces before newlines
-    .replace(/\n[ \t]/g, '\n')  // Remove spaces after newlines
-    .replace(/\n{3,}/g, '\n\n')  // Limit consecutive newlines to 2
+    .replace(/[ \t]+/g, ' ')
+    .replace(/[ \t]\n/g, '\n')
+    .replace(/\n[ \t]/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
-function sanitizeEmbedField(field) {
-  if (!field || typeof field !== 'object') {
-    return field;
-  }
-
+function normalizeField(field) {
+  if (!field || typeof field !== 'object') return field;
   return {
     ...field,
-    name: sanitizeEmbedText(field.name),
-    value: sanitizeEmbedText(field.value),
+    name: normalizeText(field.name),
+    value: normalizeText(field.value),
   };
 }
 
-const originalSetTitle = EmbedBuilder.prototype.setTitle;
-const originalSetAuthor = EmbedBuilder.prototype.setAuthor;
-const originalAddFields = EmbedBuilder.prototype.addFields;
+/** ── Prototype patches ──────────────────────────────────── */
 
-EmbedBuilder.prototype.setTitle = function setSanitizedTitle(title) {
-  return originalSetTitle.call(this, sanitizeEmbedText(title));
+const OG = {
+  setTitle: EmbedBuilder.prototype.setTitle,
+  setAuthor: EmbedBuilder.prototype.setAuthor,
+  addFields: EmbedBuilder.prototype.addFields,
+  setDescription: EmbedBuilder.prototype.setDescription,
+  setFooter: EmbedBuilder.prototype.setFooter,
+  setTimestamp: EmbedBuilder.prototype.setTimestamp,
 };
 
-EmbedBuilder.prototype.setAuthor = function setSanitizedAuthor(author) {
+EmbedBuilder.prototype.setTitle = function setCleanTitle(title) {
+  return OG.setTitle.call(this, normalizeText(title));
+};
+
+EmbedBuilder.prototype.setAuthor = function setCleanAuthor(author) {
   if (typeof author === 'string') {
-    return originalSetAuthor.call(this, sanitizeEmbedText(author));
+    return OG.setAuthor.call(this, normalizeText(author));
   }
-
   if (author && typeof author.name === 'string') {
-    return originalSetAuthor.call(this, {
-      ...author,
-      name: sanitizeEmbedText(author.name),
-    });
+    return OG.setAuthor.call(this, { ...author, name: normalizeText(author.name) });
   }
-
-  return originalSetAuthor.call(this, author);
+  return OG.setAuthor.call(this, author);
 };
 
-EmbedBuilder.prototype.addFields = function addSanitizedFields(...fields) {
-  const normalized = fields.flatMap((field) => (Array.isArray(field) ? field : [field]));
-  const sanitized = normalized.map(sanitizeEmbedField);
-  return originalAddFields.call(this, sanitized);
+EmbedBuilder.prototype.addFields = function addCleanFields(...fields) {
+  const normalized = fields.flatMap((f) => (Array.isArray(f) ? f : [f]));
+  return OG.addFields.call(this, normalized.map(normalizeField));
 };
 
-function normalizeFooterText(footer) {
-  if (!footer) {
-    return '';
-  }
+EmbedBuilder.prototype.setDescription = function setCleanDescription(description = '') {
+  const str = normalizeText(description || '');
+  this[EMBED_BASE_DESCRIPTION_SYMBOL] = str;
+  return OG.setDescription.call(this, str);
+};
 
-  if (typeof footer === 'string') {
-    return footer.trim();
-  }
+EmbedBuilder.prototype.setFooter = function setCleanFooter(footer) {
+  if (!footer) return this;
+  const text = typeof footer === 'string' ? footer.trim() : (footer.text || '').trim();
+  if (!text) return this;
+  this[EMBED_FOOTER_SYMBOL] = text;
+  return OG.setFooter.call(this, { text });
+};
 
-  if (footer && typeof footer.text === 'string') {
-    return footer.text.trim();
-  }
+EmbedBuilder.prototype.setTimestamp = function setRealTimestamp(date) {
+  return OG.setTimestamp.call(this, date);
+};
 
-  return '';
+/** ── Embed colour helpers ──────────────────────────────── */
+
+function resolveEmbedColor(colorOrName, guildId) {
+  try {
+    const overrides = guildId ? getGuildOverrides(guildId) : null;
+    return getColor(colorOrName, '#000000', overrides) || '#000000';
+  } catch {
+    return '#000000';
+  }
 }
 
-function isImportantFooter(footerText) {
-  if (!footerText) {
-    return false;
-  }
-
-  const normalized = footerText.toLowerCase();
-  return /\b(close|closes|closed|expire|expires|available in|page\s+\d+|dashboard closes|ticket id)\b/.test(normalized);
-}
-
-const originalSetDescription = EmbedBuilder.prototype.setDescription;
-const originalSetFooter = EmbedBuilder.prototype.setFooter;
-const originalSetTimestamp = EmbedBuilder.prototype.setTimestamp;
-
-EmbedBuilder.prototype.setDescription = function(description = '') {
-  const descString = sanitizeEmbedText(description || '');
-  this[EMBED_BASE_DESCRIPTION_SYMBOL] = descString;
-  return originalSetDescription.call(this, descString);
-};
-
-EmbedBuilder.prototype.setFooter = function(footer) {
-  const footerText = sanitizeEmbedText(normalizeFooterText(footer));
-  if (!footerText || !isImportantFooter(footerText)) {
-    return this;
-  }
-
-  this[EMBED_FOOTER_SYMBOL] = footerText;
-  return originalSetFooter.call(this, { text: footerText });
-};
-
-EmbedBuilder.prototype.setTimestamp = function() {
-  return this;
-};
+/** ── Master embed builder ───────────────────────────────── */
 
 export function createEmbed({
   title = '',
@@ -118,12 +95,12 @@ export function createEmbed({
   color = 'primary',
   fields = [],
   author = null,
-  footer = null,
+  footer = '✨ Clypher Bot',   // default branded footer
   thumbnail = null,
   image = null,
-  timestamp = false,
+  timestamp = true,            // timestamps on by default
   url = null,
-  guildId = null
+  guildId = null,
 } = {}) {
   const embed = new EmbedBuilder();
 
@@ -135,67 +112,42 @@ export function createEmbed({
     embed.setDescription(description.substring(0, 4096));
   }
 
-  try {
-    const overrides = guildId ? getGuildOverrides(guildId) : null;
-    const embedColor = getColor(color, '#000000', overrides) || '#000000';
-    embed.setColor(embedColor);
-  } catch (error) {
-    embed.setColor('#000000');
-  }
+  embed.setColor(resolveEmbedColor(color, guildId));
 
   if (Array.isArray(fields) && fields.length > 0) {
-    const validFields = fields.filter(f => f && f.name && f.value);
-    if (validFields.length > 0) {
-      embed.addFields(validFields.slice(0, 25)); 
-    }
+    const valid = fields.filter(f => f && f.name && f.value);
+    if (valid.length > 0) embed.addFields(valid.slice(0, 25));
   }
 
   if (author) {
     try {
       if (typeof author === 'string' && author.length > 0) {
         embed.setAuthor({ name: author.substring(0, 256) });
-      } else if (author && typeof author.name === 'string') {
+      } else if (typeof author.name === 'string') {
         embed.setAuthor(author);
       }
-    } catch (error) {
-      
-    }
+    } catch { /* skip */ }
   }
 
   if (footer) {
     try {
-      if (typeof footer === 'string' && footer.length > 0) {
-        embed.setFooter({ text: footer.substring(0, 2048) });
-      } else if (footer && typeof footer.text === 'string') {
-        embed.setFooter(footer);
-      }
-    } catch (error) {
-      
-    }
+      const text = typeof footer === 'string' ? footer : footer.text || '';
+      if (text) embed.setFooter({ text: text.substring(0, 2048) });
+    } catch { /* skip */ }
   }
 
   if (thumbnail) {
     try {
-      if (typeof thumbnail === 'string' && thumbnail.length > 0) {
-        embed.setThumbnail(thumbnail);
-      } else if (thumbnail && typeof thumbnail.url === 'string') {
-        embed.setThumbnail(thumbnail.url);
-      }
-    } catch (error) {
-      
-    }
+      const src = typeof thumbnail === 'string' ? thumbnail : thumbnail.url;
+      if (src) embed.setThumbnail(src);
+    } catch { /* skip */ }
   }
 
   if (image) {
     try {
-      if (typeof image === 'string' && image.length > 0) {
-        embed.setImage(image);
-      } else if (image && typeof image.url === 'string') {
-        embed.setImage(image.url);
-      }
-    } catch (error) {
-      
-    }
+      const src = typeof image === 'string' ? image : image.url;
+      if (src) embed.setImage(src);
+    } catch { /* skip */ }
   }
 
   if (timestamp === true) {
@@ -205,34 +157,32 @@ export function createEmbed({
   }
 
   if (url && typeof url === 'string' && url.length > 0) {
-    try {
-      embed.setURL(url);
-    } catch (error) {
-      
-    }
+    try { embed.setURL(url); } catch { /* skip */ }
   }
 
   return embed;
 }
 
+/** ── Emoji-enriched default titles ─────────────────────── */
+
 const NOTIFICATION_DEFAULT_TITLES = {
-  success: 'Success',
-  error: 'Error',
-  info: 'Information',
-  warning: 'Warning',
-  primary: 'Notice',
+  success: '✅ Success',
+  error: '❌ Error',
+  info: 'ℹ️ Information',
+  warning: '⚠️ Warning',
+  primary: '📢 Notice',
 };
 
 export const USER_ERROR_TITLES = {
-  validation: 'Invalid Input',
-  permission: 'Permission Denied',
-  configuration: 'Configuration Error',
-  database: 'Database Error',
-  network: 'Network Error',
-  discord_api: 'Discord API Error',
-  user_input: 'Input Error',
-  rate_limit: 'Too Fast',
-  unknown: 'Something Went Wrong',
+  validation: '❌ Invalid Input',
+  permission: '🚫 Permission Denied',
+  configuration: '⚙️ Configuration Error',
+  database: '🗄️ Database Error',
+  network: '🌐 Network Error',
+  discord_api: '🤖 Discord API Error',
+  user_input: '✏️ Input Error',
+  rate_limit: '⏳ Too Fast',
+  unknown: '💥 Something Went Wrong',
 };
 
 const USER_ERROR_COLORS = {
