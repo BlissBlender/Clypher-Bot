@@ -1,0 +1,85 @@
+# Lavalink v4 Configuration
+# Used by ClypherBot for music playback via Riffy.
+# 
+# For first-time setup:
+#   1. Copy this file to the Lavalink server's working directory
+#   2. Make sure the password matches LAVALINK_PASSWORD in your .env
+#   3. Run: java -jar Lavalink.jar
+#
+# Docker Compose (recommended — included in docker-compose.yml):
+#   services:
+#     lavalink:
+#       image: ghcr.io/lavalink-devs/lavalink:4
+#       container_name: lavalink
+#       restart: unless-stopped
+#       volumes:
+#         - ./application.yml:/opt/Lavalink/application.yml
+#       ports:
+#         - "2333:2333"
+
+server:
+  port: 2333
+  address: 0.0.0.0
+
+plugins:
+  # You can add Lavalink plugins here (e.g., sponsored, youtube-source)
+  # See https://lavalink.dev/plugins/
+
+lavalink:
+  server:
+    password: "youshallnotpass"
+    sources:
+      youtube: true
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: LOW
+    keepAliveTimeout: 30
+    gcDuration: 360
+    ratelimit:
+      ipBlocks: ["0.0.0.0/0"]
+      excludedIps: ["127.0.0.1", "::1"]
+      strategy: "RotateOnBan"
+      searchTriggersFail: true
+      retryLimit: 0
+    ytPlaylistLimit: 500
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+sentry:
+  dsn: ""
+  environment: ""
+
+logging:
+  file:
+    path: ./logs/
+    max-history: 7
+    max-size: 1GB
+  logback:
+    level: INFO
+  level:
+    root: INFO
+    lavalink: INFO

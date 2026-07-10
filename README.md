@@ -1,276 +1,561 @@
-# ClypherBot - Ultimate Discord Bot
+# ClypherBot — Ultimate Discord Bot
 
-**ClypherBot** is a powerful, feature-rich Discord bot designed to enhance your server experience with comprehensive moderation tools, engaging economy systems, utility features, and much more. Built with modern Discord.js v14 and PostgreSQL for optimal performance and data persistence.
+**ClypherBot** is a powerful, feature-rich Discord bot with moderation tools, economy systems, music, leveling, tickets, giveaways, and much more. Built with Discord.js v14 and PostgreSQL.
 
-[![Discord.js](https://img.shields.io/npm/v/discord.js?style=flat-square&labelColor=%23202225&color=%23202225&logo=npm&logoColor=white&logoWidth=20)](https://www.npmjs.com/package/discord.js)
-![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-%23336791?logo=postgresql&logoColor=white&style=flat-square&logoWidth=20)
+[![Discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?logo=discord&logoColor=white)](https://discord.js.org)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-optional-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Support Server](https://img.shields.io/badge/Support-Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/charon)
 
-## Table of Contents
+> 💬 **Need help?** Join our [Discord Support Server](https://discord.gg/charon) for assistance, updates, and community.
 
-- [Features Overview](#features-overview)
-- [Quick Setup](#quick-setup)
-- [Manual Installation Steps](#manual-installation-steps)
-- [Required Bot Intents](#bot-intents)
-- [Contributing](CONTRIBUTING.md)
+---
+
+## 🆘 Need Help?
+
+Join the [**ClypherBot Support Server**](https://discord.gg/charon) — get help with setup, report bugs, suggest features, and connect with other users!
+
+---
+
+## 📖 Table of Contents
+
+1. [Features Overview](#features-overview)
+2. [Prerequisites](#prerequisites)
+3. [Discord Application Setup](#discord-application-setup)
+4. [Quick Start — Local Installation](#quick-start--local-installation)
+5. [PostgreSQL Setup (Optional)](#postgresql-setup-optional)
+6. [Lavalink Setup (Music)](#lavalink-setup-music)
+7. [Deploy on Render (Free)](#deploy-on-render-free)
+8. [Command Registration](#command-registration)
+9. [Environment Variables Reference](#environment-variables-reference)
+10. [Troubleshooting](#troubleshooting)
+
+---
 
 <a name="features-overview"></a>
-## Features Overview
+## ✨ Features Overview
 
-ClypherBot offers a complete suite of tools for Discord server management and community engagement:
+| Category | Features |
+|----------|----------|
+| 🛡️ **Moderation** | Ban, kick, timeout, warn, purge, lock/unlock channels, mass actions, case tracking, user notes, **auto-moderation** (anti-link, anti-spam, auto-mod dashboard) |
+| 💰 **Economy** | Balance, daily, work, crime, gamble, rob, fish, mine, hunt, lottery, shop, inventory, stock market, lucky wheel, cooking |
+| 📊 **Leveling** | XP system, rank cards, leaderboards, level roles, configurable XP rates |
+| 🎵 **Music** | Play from YouTube/Spotify/SoundCloud/etc., queue, 24/7 mode, buttons, Lavalink v4 |
+| 🎫 **Tickets** | Ticket system with priority levels, claiming, transcripts |
+| 🎉 **Giveaways** | Create, end, reroll, multiple winners |
+| 🎮 **Fun** | 8-ball, roast, compliment, RPS, slot machine, flip, fight, counting game |
+| 🛠️ **Utility** | Weather, todo lists, password generator, color picker, URL shortener, AFK, server info, user info, polls |
+| 👋 **Welcome** | Welcome/goodbye messages, auto-roles, custom embeds |
+| 🎂 **Birthdays** | Birthday tracking with auto-announcements |
+| ✅ **Verification** | Button-based verification system |
+| 🎭 **Reaction Roles** | Self-assignable roles via reactions |
+| 🔢 **Server Stats** | Live member count voice/text channels |
+| 🔌 **Join to Create** | Temporary voice channels |
 
-<table>
-<tr>
-<td width="50%" valign="top">
+> 💬 **Questions or need help?** Join the [Discord Support Server](https://discord.gg/charon)
 
-### Moderation & Administration
-- **Mass Actions** - Bulk ban/kick capabilities
-- **User Notes** - Keep detailed moderation records
-- **Case Management** - View and track all mod actions
+---
 
-### Economy System
-- **Shop & Inventory** - Buy and manage items
-- **Stock Market** - Buy/sell stocks with fluctuating prices
-- **Lottery** - Buy tickets for a chance to win the jackpot
-- **Hunting** - Hunt animals with a rifle for profit
-- **Cooking** - Cook fish into gourmet meals
-- **Lucky Wheel** - Spin the wheel for prizes
-- **Gambling** - Risk it for rewards
-- **Pay System** - Transfer money between users
+<a name="prerequisites"></a>
+## 📋 Prerequisites
 
-### Fun & Entertainment
-- **8-Ball** - Ask the magic 8-ball a question
-- **Roast** - Roast someone with a fiery insult
-- **Compliment** - Brighten someone's day
-- **Rock Paper Scissors** - Play RPS against the bot
-- **Slot Machine** - Spin the slot machine
+| Requirement | Minimum | Notes |
+|-------------|---------|-------|
+| **Node.js** | v18.0.0 | v20+ recommended |
+| **npm** | 9.x | Comes with Node.js |
+| **PostgreSQL** | 14+ | Optional — in-memory fallback works without it |
+| **Java** | 17+ | Only needed for **music** (Lavalink) |
+| **Git** | — | To clone the repository |
 
-### Advanced Ticket System
-- **Claim & Priority** - Staff ticket management
-- **Ticket Limits** - Prevent spam
-- **Transcript System** - Save ticket history
+---
 
-### Server Stats
-- **Member Counter** - Live member count channels
-- **Voice Counters** - Track voice stats
-- **Dynamic Updates** - Real-time channel updates
+<a name="discord-application-setup"></a>
+## 🤖 Discord Application Setup
 
-### Reaction Roles
-- **Role Assignment** - Self-assignable roles
-- **Emoji Selection** - Reaction-based system
-- **Multi-role Support** - Multiple role options
+### Step 1: Create a Discord Application
 
-</td>
-<td width="50%" valign="top">
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application** → give it a name → **Create**
+3. Go to the **Bot** tab in the left sidebar
 
-### Leveling & XP System
-- **XP Tracking** - Automatic message-based XP
-- **Level Roles** - Auto-assign roles by level
-- **Custom Configuration** - Personalize leveling
+### Step 2: Create & Copy Your Bot Token
 
-### Giveaways & Events
-- **Multiple Winners** - Support multi-winner giveaways
-- **Auto Picking** - Automatic winner selection
-- **Reroll System** - Pick new winners if needed
+1. Click **Reset Token** → **Yes, do it!**
+2. Copy the token (starts with `MT` followed by a long string of characters)
+3. **Save this** — you'll put it in your `.env` file as `DISCORD_TOKEN`
 
-### Birthday System
-- **Birthday Tracking** - Never miss a birthday
-- **Auto Announcements** - Celebrate automatically
-- **Timezone Support** - Accurate worldwide tracking
+### Step 3: Enable Bot Intents
 
-### Utility Tools
-- **Report System** - Report issues to staff
-- **Todo Lists** - Personal task management
-- **First Message** - Jump to channel's first message
+In the **Bot** tab, scroll down to **Privileged Gateway Intents** and enable ALL of these:
 
-### Welcome System
-- **Welcome Messages** - Greet new members
-- **Auto Roles** - Assign roles on join
-- **Custom Embeds** - Personalized messages
-  
-### Music
-- **24/7 Mode** - Play music 24/7
-- **Interactive Button System** - Manage music through buttons
-- **Supports EVERY platform** - Supports spotify, deezer, youtube, apple music
-  
-</td>
-</tr>
-</table>
+| Intent | Required for |
+|--------|-------------|
+| ✅ **Presence Intent** | Member status tracking |
+| ✅ **Server Members Intent** | Rank, welcome messages, auto-roles |
+| ✅ **Message Content Intent** | Prefix commands, auto-mod, leveling |
 
-<a name="quick-setup"></a>
-## Quick Setup (Recommended for non-coders)
+> ⚠️ **Important:** Without these intents, many bot features will not work!
 
-## Docker Deployment (Recommended)
+### Step 4: Get Your Client ID
 
-ClypherBot is fully containerized for easy deployment.
+1. Go to **OAuth2** → **General** tab
+2. Copy the **Client ID** (a long number like `123456789012345678`)
+3. This goes in your `.env` as `CLIENT_ID`
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/BlissBlender/Clypher-Bot.git
-   cd ClypherBot
-   ```
+### Step 5: Get Your Server (Guild) ID
 
-2. **Configure environment variables:**
-   Create a `.env` file from `.env.example` and fill in your bot details and PostgreSQL credentials.
+1. Open Discord
+2. Go to **User Settings** → **Advanced** → enable **Developer Mode**
+3. Right-click your server name → **Copy Server ID**
+4. This goes in your `.env` as `GUILD_ID`
 
-3. **Start the containers:**
-   ```bash
-   docker-compose up -d
-   ```
+### Step 6: Invite the Bot to Your Server
 
-This will start the bot, PostgreSQL, and Lavalink (when music is enabled).
+1. In Developer Portal, go to **OAuth2** → **URL Generator**
+2. Under **Scopes**, check:
+   - `bot`
+   - `applications.commands`
+3. Under **Bot Permissions**, check these minimum permissions:
+   - `View Channels`, `Send Messages`, `Embed Links`, `Attach Files`
+   - `Read Message History`, `Manage Messages`, `Manage Channels`
+   - `Manage Roles`, `Kick Members`, `Ban Members`, `Moderate Members`
+   - `Connect`, `Speak` (for music)
+4. Copy the generated URL and open it in your browser
+5. Select your server and click **Authorize**
 
-### Music
+> ✅ You should see the bot join your server!
 
-Music uses [Lavalink v4](https://github.com/lavalink-devs/Lavalink) via [Riffy](https://github.com/riffy-rb/riffy), similar to [Musicify](https://github.com/BlissBlender/Musicify).
+---
 
-1. Set in `.env`:
-   ```env
-   LAVALINK_HOST=lavalink
-   LAVALINK_PORT=2333
-   LAVALINK_PASSWORD=youshallnotpass
-   LAVALINK_SECURE=false
-   ```
-2. With Docker Compose, Lavalink is included automatically when you `docker compose up`.
-3. On Railway, deploy Lavalink separately or as another service and point `LAVALINK_HOST` at the private hostname.
-4. Use `/play <song>` from a voice channel, or `/join` to connect without playing. Prefix shortcuts: `join`, `np`, `leave`, `pause`, `resume`, `skip`, `stop`, `volume <0-100>`, or `music <subcommand>`. Use `/nowplaying` and `/queue` for status; `/music` for loop, shuffle, seek, and other controls.
+<a name="quick-start--local-installation"></a>
+## 🚀 Quick Start — Local Installation
 
-### Using GitHub Container Registry
-
-The bot is automatically published to GitHub Container Registry on every push to main.
+### 1. Clone the Repository
 
 ```bash
-docker pull ghcr.io/BlissBlender/Clypher-Bot:main
+git clone https://github.com/BlissBlender/Clypher-Bot.git
+cd Clypher-Bot
 ```
 
-<a name="manual-installation-steps"></a>
-## Manual Installation Steps
+### 2. Install Dependencies
 
-### Prerequisites
-- Node.js 18.0.0 or higher
-- PostgreSQL server (recommended) or memory storage fallback
-- Discord bot application with proper intents
+```bash
+npm install
+```
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/BlissBlender/Clypher-Bot.git
-   cd ClypherBot
-   ```
+### 3. Configure Environment Variables
 
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+cp .env.example .env
+```
 
-3. **Configure Environment Variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` with your configuration (only the following variables require configuration, leave remaining variables as default):
-   ```env
-   # Discord Bot Configuration
-   DISCORD_TOKEN=your_discord_bot_token_here
-   CLIENT_ID=your_discord_client_id_here
-   GUILD_ID=your_discord_guild_id_here
+Edit `.env` with your Discord bot details. The **minimum** you need to set:
 
-   # PostgreSQL Configuration (Primary Database)
-   POSTGRES_URL=postgresql://postgres:yourpassword@localhost:5432/clypher
-   POSTGRES_HOST=localhost
-   POSTGRES_PORT=5432
-   POSTGRES_DB=clypher
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=yourpassword
-   ```
+```env
+# ── Discord (REQUIRED) ──
+DISCORD_TOKEN=YOUR_BOT_TOKEN (from Discord Developer Portal)
+CLIENT_ID=YOUR_CLIENT_ID (from Discord Developer Portal)
+GUILD_ID=YOUR_SERVER_ID (right-click server in Discord)
 
-   Production note:
-   - `NODE_ENV=production`
-   - `LOG_LEVEL=warn` for a clean production console (critical issues + startup status)
-   - `LOG_LEVEL=info` if you want more detailed operational logs
-   - If your chosen `PORT` is already used, ClypherBot automatically tries the next port(s)
+# ── PostgreSQL (Optional - bot works without it) ──
+POSTGRES_URL=postgresql://postgres:yourpassword@localhost:5432/clypher
 
-   Environment options reference:
-   - `NODE_ENV`: `development`, `production`, `test` (any non-`production` value is treated as non-production)
-   - `LOG_LEVEL`: `error`, `warn`, `info`, `http`, `verbose`, `debug`, `silly`
-   - Accepted aliases for `LOG_LEVEL` in this bot: `warns`, `warning`, `warnings` → `warn`
+# ── Quick Start Mode ──
+NODE_ENV=development
+LOG_LEVEL=debug
+```
 
-   Recommended production `.env` (easy mode + default mode):
-   ```env
-   NODE_ENV=production
-   LOG_LEVEL=warn
-   WEB_HOST=0.0.0.0
-   PORT=3000
-   PORT_RETRY_ATTEMPTS=5
-   ```
-   This gives clear startup/online status messages while keeping logs simple for non-technical operators.
-   If port `3000` is busy, the bot tries the next available ports automatically (up to `PORT_RETRY_ATTEMPTS`).
+> 🎯 **For first-time users:** Just set `DISCORD_TOKEN`, `CLIENT_ID`, and `GUILD_ID` only. The bot will start with in-memory storage (data resets on restart — good for testing).
 
-### Running in multiple servers (optional)
+### 4. Start the Bot
 
-Most users run ClypherBot on a **single server** with `GUILD_ID` set (default tutorial setup). If you want commands to work in **every server** the bot is invited to, opt in with:
+```bash
+npm start
+```
+
+You should see:
+```
+🟢 ClypherBot is online!
+✅ Connected to Discord
+```
+
+### 5. Run `/commands sync` in Discord
+
+After the bot starts, type `/commands sync` in any channel the bot can see. This forces Discord to register all 93 slash commands.
+
+> Wait 1-2 minutes, then type `/` — you should see all commands appear.
+
+---
+
+<a name="postgresql-setup-optional"></a>
+## 🗄️ PostgreSQL Setup (Optional — Recommended for Production)
+
+Without PostgreSQL, the bot uses **in-memory storage** — all data (economy, levels, config) is lost when the bot restarts. For production, set up PostgreSQL:
+
+### Option A: Local PostgreSQL
+
+```bash
+# Install PostgreSQL (Ubuntu/Debian)
+sudo apt install postgresql postgresql-contrib
+
+# Install PostgreSQL (macOS)
+brew install postgresql
+
+# Install PostgreSQL (Windows)
+# Download from https://www.postgresql.org/download/windows/
+```
+
+Then create the database:
+
+```bash
+# Start PostgreSQL
+sudo service postgresql start
+
+# Create database
+sudo -u postgres createdb clypher
+
+# Set password (replace 'yourpassword')
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'yourpassword';"
+```
+
+Update your `.env`:
+
+```env
+POSTGRES_URL=postgresql://postgres:yourpassword@localhost:5432/clypher
+```
+
+### Option B: Free Cloud PostgreSQL (Railway / Neon)
+
+[Railway](https://railway.app) and [Neon](https://neon.tech) offer free PostgreSQL databases:
+
+1. Create an account on Railway or Neon
+2. Create a new PostgreSQL database
+3. Copy the connection string (looks like `postgresql://user:pass@host:port/db`)
+4. Set it as `POSTGRES_URL` in your `.env`
+
+### Verify the Database
+
+```bash
+npm run migrate:check
+```
+
+If PostgreSQL is connected, you'll see migration status. If not, the bot falls back to in-memory storage automatically.
+
+---
+
+<a name="lavalink-setup-music"></a>
+## 🎵 Lavalink Setup (Music)
+
+ClypherBot uses **Lavalink v4** for music playback. Without Lavalink, music commands will be disabled.
+
+### Step 1: Download Lavalink
+
+Download the latest **Lavalink v4** jar from the [releases page](https://github.com/lavalink-devs/Lavalink/releases):
+
+```bash
+# Download Lavalink v4
+curl -LO https://github.com/lavalink-devs/Lavalink/releases/latest/download/Lavalink.jar
+```
+
+### Step 2: Create `application.yml`
+
+An `application.yml` is already included in the project root. It configures Lavalink with default settings.
+
+> ⚠️ **Important:** The `password` in `application.yml` must match `LAVALINK_PASSWORD` in your `.env` file. The default is `youshallnotpass`.
+
+### Step 3: Start Lavalink
+
+```bash
+# Make sure application.yml is in the same directory as Lavalink.jar
+java -jar Lavalink.jar
+```
+
+You should see:
+```
+Lavalink is ready to accept connections.
+```
+
+### Step 4: Configure `.env`
+
+```env
+LAVALINK_HOST=localhost
+LAVALINK_PORT=2333
+LAVALINK_PASSWORD=youshallnotpass
+LAVALINK_SECURE=false
+```
+
+### Step 5: Restart the Bot
+
+Stop the bot (`Ctrl+C`) and start it again. You should see:
+
+```
+Music initialized with 1 Lavalink node(s).
+```
+
+> 🎧 Music commands (`/play`, `/join`, `/nowplaying`, `/queue`) will now work!
+
+### Docker Compose (Easiest Way)
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: lavalink
+    restart: unless-stopped
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml
+    ports:
+      - "2333:2333"
+
+  clypher:
+    build: .
+    container_name: clypher
+    restart: unless-stopped
+    depends_on:
+      - lavalink
+    env_file: .env
+    environment:
+      - LAVALINK_HOST=lavalink
+    ports:
+      - "3000:3000"
+```
+
+Then just run:
+
+```bash
+docker compose up -d
+```
+
+> ✅ This starts both Lavalink and the bot. The bot connects to Lavalink automatically.
+
+---
+
+<a name="deploy-on-render-free"></a>
+## ☁️ Deploy on Render (Free Tier)
+
+### Step 1: Push to GitHub
+
+```bash
+git add -A
+git commit -m "Ready for deployment"
+git push origin main
+```
+
+### Step 2: Create a Web Service on Render
+
+1. Go to [render.com](https://render.com) → **New** → **Web Service**
+2. Connect your GitHub repository
+3. Configure:
+
+| Setting | Value |
+|---------|-------|
+| **Name** | `clypher-bot` (or your choice) |
+| **Runtime** | `Node` |
+| **Build Command** | `npm install` |
+| **Start Command** | `npm start` |
+| **Plan** | **Free** |
+
+### Step 3: Add Environment Variables
+
+Under **Environment Variables**, add:
+
+| Key | Value | Notes |
+|-----|-------|-------|
+| `DISCORD_TOKEN` | your bot token | Required |
+| `CLIENT_ID` | your client ID | Required |
+| `GUILD_ID` | your server ID | For single-server mode |
+| `NODE_ENV` | `production` | Required |
+| `LOG_LEVEL` | `warn` | Clean logs |
+| `MULTI_GUILD` | `false` | Stay in single-server mode |
+
+> 🎯 **Free tier tip:** Without PostgreSQL, data resets on restart. For persistent data on Render's free tier, the bot has **file-based persistence** for leveling and the counting game — stored in a `data/` folder.
+
+### Step 4: Deploy
+
+Click **Create Web Service**. Render will build and deploy your bot. Watch the logs for:
+
+```
+ONLINE ✅ | 93 commands loaded
+```
+
+### Step 5: Run `/commands sync`
+
+In your Discord server, type `/commands sync` to force-register all commands.
+
+---
+
+<a name="command-registration"></a>
+## 🔄 Command Registration
+
+### Automatic Registration (On Startup)
+
+When the bot starts, it automatically registers all commands with Discord. You'll see:
+
+```
+Registering slash commands...
+Successfully registered 93 commands
+```
+
+### Manual Registration (/commands sync)
+
+If commands are missing (e.g., after a fresh deploy), run:
+
+```
+/commands sync
+```
+
+This forces a re-registration. Wait **1-2 minutes** for Discord to process.
+
+### Why Commands Might Not Show
+
+| Cause | Fix |
+|-------|-----|
+| **First deploy — global commands** | Global commands take **up to 1 hour** to propagate. Use `GUILD_ID` for instant registration |
+| **Bot was re-invited** | Run `/commands sync` or wait for cache refresh |
+| **Discord cache** | Press **Ctrl+R** (Windows) or **Cmd+R** (Mac) to refresh Discord |
+| **Registration failed** | Check Render logs for errors. Verify `CLIENT_ID` and `DISCORD_TOKEN` are correct |
+
+### Multi-Server Mode
+
+To run the bot in multiple servers:
 
 ```env
 MULTI_GUILD=true
+# GUILD_ID is optional when MULTI_GUILD=true
 ```
 
-Notes for multi-server mode:
-- `GUILD_ID` is not used for command registration when `MULTI_GUILD=true` (you can leave it set or remove it)
-- Global slash commands may take up to about an hour to propagate on first deploy
-- Each server still has **isolated** config, economy, tickets, leveling, and other data
-- In the [Discord Developer Portal](https://discord.com/developers/applications), ensure your bot is not restricted to a single guild if you plan to invite it elsewhere
-- Generate an OAuth2 invite URL from the [Discord Developer Portal](https://discord.com/developers/applications) (OAuth2 → URL Generator, scopes: `bot` and `applications.commands`)
+Then generate a new invite URL with both `bot` and `applications.commands` scopes.
 
-4. **Setup PostgreSQL Database** (Optional but recommended)
-   ```bash
-   # Create database and user
-   createdb clypher
-   createuser clypher
-   psql -c "ALTER USER clypher PASSWORD 'yourpassword';"
-   psql -c "GRANT ALL PRIVILEGES ON DATABASE clypher TO clypher;"
-   ```
+---
 
-5. **Verify Database Setup**
-   ```bash
-   npm run migrate:check
-   ```
+<a name="environment-variables-reference"></a>
+## 🔧 Environment Variables Reference
 
-6. **Start the Bot**
-   ```bash
-   npm start
-   ```
-<a name="bot-intents"></a>
+### Required
 
-## Required Bot Intents
-ClypherBot requires the following Discord intents:
-- **Guilds**
-- **Guild Messages**
-- **Message Content**
-- **Guild Members**
-- **Guild Message Reactions**
-- **Guild Voice States**
-- **Direct Messages**
-- **Bot**
-- **Applications.commands**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DISCORD_TOKEN` | Discord bot token | — |
+| `CLIENT_ID` | Discord application client ID | — |
+| `GUILD_ID` | Discord server ID (for single-server mode) | — |
 
-### Required Permissions
-- **View Channels**
-- **Send Messages**
-- **Embed Links**
-- **Attach Files**
-- **Read Message History**
-- **Manage Messages**
-- **Manage Channels**
-- **Manage Roles**
-- **Kick Members**
-- **Manage Messages**
-- **Ban Members**
-- **Moderate Members**
-- **Connect**
+### Optional — Bot Behavior
 
-## License
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MULTI_GUILD` | Enable commands in all servers | `false` |
+| `OWNER_IDS` | Comma-separated Discord user IDs (bot owners) | `""` |
+| `NODE_ENV` | `production` or `development` | `development` |
+| `LOG_LEVEL` | `error`, `warn`, `info`, `debug` | `info` |
+| `LOG_TO_FILE` | Save logs to file | `false` |
+| `PREFIX` | Prefix for text commands | `!` |
+
+### Optional — PostgreSQL
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POSTGRES_URL` | Full PostgreSQL connection string | `postgresql://localhost:5432/clypher` |
+| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_DB` | Database name | `clypher` |
+| `POSTGRES_USER` | Database user | `postgres` |
+| `POSTGRES_PASSWORD` | Database password | `""` |
+
+### Optional — Lavalink (Music)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LAVALINK_HOST` | Lavalink server host | `localhost` |
+| `LAVALINK_PORT` | Lavalink server port | `2333` |
+| `LAVALINK_PASSWORD` | Lavalink server password | `youshallnotpass` |
+| `LAVALINK_SECURE` | Use SSL for Lavalink | `false` |
+| `LAVALINK_NAME` | Node name | `Main` |
+| `LAVALINK_NODES` | JSON array of multiple Lavalink nodes | `""` |
+| `LAVALINK_SEARCH_PLATFORM` | Default search platform | `ytmsearch` |
+
+### Optional — Web Server
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Web server port (health check) | `3000` |
+| `WEB_HOST` | Web server host | `0.0.0.0` |
+
+---
+
+<a name="troubleshooting"></a>
+## 🔍 Troubleshooting
+
+### Bot won't start
+
+```
+Error: Cannot find module 'discord.js'
+```
+
+Run `npm install` to install dependencies.
+
+### Commands not showing
+
+```
+Error: No command matching help was found.
+```
+
+Run `/commands sync` in your server. If using `MULTI_GUILD=true`, wait up to 1 hour for global propagation.
+
+### Music not working
+
+```
+Lavalink is configured with localhost in production — skipping music initialization.
+```
+
+Either:
+- Run Lavalink locally (set `LAVALINK_HOST=localhost`)
+- Deploy Lavalink on Render/Railway and set `LAVALINK_HOST` to its URL
+- Use Docker Compose which includes Lavalink
+
+### "Cannot send an empty message" error
+
+```
+DiscordAPIError: Cannot send an empty message
+```
+
+Some commands need data to work. For example, `/leaderboard` needs users with XP, and `/eleaderboard` needs users with economy balances.
+
+### Database connection failed
+
+```
+Database connection failed — falling back to in-memory storage
+```
+
+This is **normal** if you haven't set up PostgreSQL. The bot will work but data resets on restart.
+
+### Bot crashes on startup
+
+Check your `.env` file:
+- Is `DISCORD_TOKEN` correct? (It should be the bot token, not the client secret)
+- Is `CLIENT_ID` a valid number?
+- Did you enable the required intents in Discord Developer Portal?
+
+### Still stuck?
+
+> 💬 Join the [**ClypherBot Support Server**](https://discord.gg/charon) — we'll help you get it running!
+
+---
+
+## 📄 License
 
 ClypherBot is released under the MIT License. See [LICENSE](LICENSE) for details.
 
-## Thank You
+---
 
-Thank you for choosing ClypherBot for your Discord server! We're constantly working to improve and add new features based on community feedback.
+## 💬 Join the Community
 
-*Last updated: May 2026*
+Got questions, ideas, or just want to hang out? Join the [**ClypherBot Support Server**](https://discord.gg/charon)!
+
+---
+
+*Last updated: July 2026*
