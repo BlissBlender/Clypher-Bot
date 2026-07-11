@@ -2,14 +2,24 @@ import { logger } from '../utils/logger.js';
 
 export const botConfig = {
   // =========================
+  // BRANDING & SUPPORT
+  // =========================
+  /** URL for the Discord support server — shown in embeds and /help */
+  supportServer: process.env.SUPPORT_SERVER_URL || null,
+
+  // =========================
   // BOT PRESENCE (what users see under the bot name)
+  // Customize via BOT_PRESENCE_TEXT and BOT_PRESENCE_TYPE env vars.
+  // Type: 0=Playing, 2=Listening, 3=Watching, 5=Competing
   // =========================
   presence: {
     status: "online",
     activities: [
       {
-        name: "Made with ❤️",
-        type: 0,
+        name: process.env.BOT_PRESENCE_TEXT || "/help | ClypherBot v2.1.0",
+        type: [0, 2, 3, 5].includes(parseInt(process.env.BOT_PRESENCE_TYPE, 10)) 
+        ? parseInt(process.env.BOT_PRESENCE_TYPE, 10) 
+        : 3,
       },
     ],
   },

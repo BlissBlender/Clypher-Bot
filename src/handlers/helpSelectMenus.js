@@ -1,4 +1,5 @@
 import { createEmbed } from '../utils/embeds.js';
+import { BotConfig } from '../config/bot.js';
 import { createButton, getPaginationRow } from '../utils/components.js';
 import fs from 'fs/promises';
 import path from 'path';
@@ -13,7 +14,9 @@ const BACK_BUTTON_ID = "help-back-to-main";
 const ALL_COMMANDS_ID = "help-all-commands";
 const PAGINATION_PREFIX = "help-page";
 const CATEGORY_SELECT_ID = "help-category-select";
-const FOOTER_TEXT = "Made with ❤️";
+const FOOTER_TEXT = BotConfig.supportServer 
+    ? `Need help? Join our support server!` 
+    : `ClypherBot v2.1.0`;
 const SUBCOMMAND_TYPE = 1;
 const SUBCOMMAND_GROUP_TYPE = 2;
 

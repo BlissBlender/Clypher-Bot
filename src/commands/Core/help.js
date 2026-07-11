@@ -5,6 +5,7 @@ import {
     ButtonStyle,
 } from "discord.js";
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+import { BotConfig } from '../../config/bot.js';
 import { createEmbed } from "../../utils/embeds.js";
 import {
     createSelectMenu,
@@ -107,9 +108,15 @@ export async function createInitialHelpMenu(client) {
         ],
     });
 
+    const supportFooter = BotConfig.supportServer 
+        ? `Need help? Join our support server!` 
+        : `ClypherBot v2.1.0`;
     embed.setFooter({ 
-        text: "Made with ❤️" 
+        text: supportFooter
     });
+    if (BotConfig.supportServer) {
+        embed.addFields({ name: '🆘 Support', value: `Join the [ClypherBot Discord](${BotConfig.supportServer}) for help!`, inline: false });
+    }
     embed.setTimestamp();
 
     const bugReportButton = new ButtonBuilder()
