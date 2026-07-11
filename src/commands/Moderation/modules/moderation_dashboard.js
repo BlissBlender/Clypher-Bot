@@ -1,4 +1,5 @@
-// moderation_dashboard.js — Interactive dashboard for Anti-Link, Anti-Spam, Auto-Mod
+// moderation_dashboard.js — Interactive dashboard for all 7 moderation categories
+// Each category page has configurable buttons that open modals to edit settings.
 
 import {
     ActionRowBuilder,
@@ -14,29 +15,80 @@ import {
 import { createEmbed, successEmbed } from '../../../utils/embeds.js';
 import { getModerationConfig, toggleModerationFeature, updateModerationSetting } from '../../../services/moderationService.js';
 
-// ── Custom ID constants ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOM ID CONSTANTS
+// ═══════════════════════════════════════════════════════════════
 
 export const DASHBOARD_PREFIX = 'mod';
 
-export const HOME_PAGE       = `${DASHBOARD_PREFIX}_home`;
-export const REFRESH         = `${DASHBOARD_PREFIX}_refresh`;
-export const TOGGLE_MASTER   = `${DASHBOARD_PREFIX}_toggle_master`;
-export const CATEGORY_SELECT = `${DASHBOARD_PREFIX}_category`;
+export const HOME_PAGE        = `${DASHBOARD_PREFIX}_home`;
+export const REFRESH          = `${DASHBOARD_PREFIX}_refresh`;
+export const TOGGLE_MASTER    = `${DASHBOARD_PREFIX}_toggle_master`;
+export const CATEGORY_SELECT  = `${DASHBOARD_PREFIX}_category`;
 
-export const TOGGLE_FEATURE  = `${DASHBOARD_PREFIX}_toggle_feature`;
-export const TOGGLE_ANTILINK = `${DASHBOARD_PREFIX}_toggle_al`;
-export const TOGGLE_ANTISPAM = `${DASHBOARD_PREFIX}_toggle_as`;
-export const TOGGLE_AUTOMOD  = `${DASHBOARD_PREFIX}_toggle_am`;
-export const TOGGLE_STRIKES  = `${DASHBOARD_PREFIX}_toggle_strikes`;
+export const TOGGLE_ANTILINK  = `${DASHBOARD_PREFIX}_toggle_al`;
+export const TOGGLE_ANTISPAM  = `${DASHBOARD_PREFIX}_toggle_as`;
+export const TOGGLE_AUTOMOD   = `${DASHBOARD_PREFIX}_toggle_am`;
+export const TOGGLE_STRIKES   = `${DASHBOARD_PREFIX}_toggle_strikes`;
 export const TOGGLE_ANTI_MASS_MENTION = `${DASHBOARD_PREFIX}_toggle_amm`;
 export const TOGGLE_ANTI_RAID = `${DASHBOARD_PREFIX}_toggle_ar`;
 export const TOGGLE_ANTI_NUKE = `${DASHBOARD_PREFIX}_toggle_an`;
 
-export const OPEN_CATEGORY   = `${DASHBOARD_PREFIX}_open_category`;
-export const IGNORED_WORDS   = `${DASHBOARD_PREFIX}_ignored_words`;
-export const IGNORED_WORDS_MODAL = `${DASHBOARD_PREFIX}_ignored_words_modal`;
+export const SETTING_BUTTON   = `${DASHBOARD_PREFIX}_setting_btn`;
+export const SETTING_MODAL    = `${DASHBOARD_PREFIX}_setting_modal`;
 
-// ── Helpers ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS DEFINITION MAP
+//  Each setting: { keyPath, label, emoji, inputLabel, placeholder, getValue(config), formatValue(val) }
+// ═══════════════════════════════════════════════════════════════
+
+const CATEGORY_SETTINGS = {
+    antilink: [
+        { keyPath: 'antiLink.action',             label: 'Action',           emoji: '⚡', inputLabel: 'Action (warn / timeout / kick / delete / none)',        placeholder: 'warn',                     getValue: c => c.antiLink?.action || 'warn',                     formatValue: v => `\`${v}\`` },
+        { keyPath: 'antiLink.allowedInviteCodes',  label: 'Allowed Invites',  emoji: '✅', inputLabel: 'Allowed invite codes (comma-separated)',                    placeholder: 'my-server, friends-chat',  getValue: c => (c.antiLink?.allowedInviteCodes || []).join(', '), formatValue: v => v ? `\`${v}\`` : '`None`' },
+        { keyPath: 'antiLink.whitelistedDomains',  label: 'Whitelisted URLs', emoji: '🌐', inputLabel: 'Allowed domains (comma-separated)',                        placeholder: 'youtube.com, github.com',  getValue: c => (c.antiLink?.whitelistedDomains || []).join(', '), formatValue: v => v ? `\`${v}\`` : '`None`' },
+        { keyPath: 'antiLink.minViolationsForAction', label: 'Auto-action at', emoji: '⚠️', inputLabel: 'Violations before auto-action (number)',                   placeholder: '3',                        getValue: c => String(c.antiLink?.minViolationsForAction || 3),   formatValue: v => `${v} violations` },
+    ],
+    antispam: [
+        { keyPath: 'antiSpam.action',              label: 'Action',           emoji: '⚡', inputLabel: 'Action (warn / timeout / kick / delete / none)',           placeholder: 'timeout',                  getValue: c => c.antiSpam?.action || 'timeout',                 formatValue: v => `\`${v}\`` },
+        { keyPath: 'antiSpam.maxMessages',          label: 'Max Messages',    emoji: '📊', inputLabel: 'Max messages in time window (number)',                      placeholder: '5',                        getValue: c => String(c.antiSpam?.maxMessages || 5),            formatValue: v => `\`${v}\` msgs` },
+        { keyPath: 'antiSpam.windowMs',             label: 'Time Window (s)', emoji: '⏱️', inputLabel: 'Time window in seconds (e.g. 5 = 5 seconds)',                placeholder: '5',                        getValue: c => String((c.antiSpam?.windowMs || 5000) / 1000),   formatValue: v => `\`${v}s\`` },
+        { keyPath: 'antiSpam.maxMentions',          label: 'Max Mentions',    emoji: '🔗', inputLabel: 'Max mentions per message before action (number)',             placeholder: '4',                        getValue: c => String(c.antiSpam?.maxMentions || 4),            formatValue: v => `\`${v}\` mentions` },
+        { keyPath: 'antiSpam.timeoutDurationMs',    label: 'Timeout (s)',     emoji: '⏳', inputLabel: 'Timeout duration in seconds (e.g. 60 = 1 minute)',            placeholder: '60',                       getValue: c => String((c.antiSpam?.timeoutDurationMs || 60000) / 1000), formatValue: v => `${v}s` },
+        { keyPath: 'antiSpam.minViolationsForAction', label: 'Auto-action at', emoji: '⚠️', inputLabel: 'Violations before auto-action (number)',                   placeholder: '3',                        getValue: c => String(c.antiSpam?.minViolationsForAction || 3), formatValue: v => `${v} violations` },
+    ],
+    automod: [
+        { keyPath: 'autoMod.blockedWords',          label: 'Blocked Words',   emoji: '📝', inputLabel: 'Blocked words (comma-separated, case-insensitive)',         placeholder: 'badword1, badword2',        getValue: c => (c.autoMod?.blockedWords || []).join(', '),      formatValue: v => v ? `\`${v}\`` : '`None`' },
+        { keyPath: 'autoMod.antiCaps.minLength',     label: 'Caps Min Length',emoji: '🔤', inputLabel: 'Minimum message length for caps check (number)',              placeholder: '8',                        getValue: c => String(c.autoMod?.antiCaps?.minLength || 8),     formatValue: v => `${v}+ chars` },
+        { keyPath: 'autoMod.antiCaps.capsThreshold', label: 'Caps Threshold',emoji: '🔤', inputLabel: 'Uppercase percentage to trigger (e.g. 70 = 70%)',              placeholder: '70',                       getValue: c => String(c.autoMod?.antiCaps?.capsThreshold || 70), formatValue: v => `${v}% caps` },
+        { keyPath: 'autoMod.antiCaps.action',        label: 'Caps Action',    emoji: '⚡', inputLabel: 'Action for caps violation (warn / timeout / kick / delete)',   placeholder: 'warn',                     getValue: c => c.autoMod?.antiCaps?.action || 'warn',           formatValue: v => `\`${v}\`` },
+        { keyPath: 'autoMod.antiRepeatedText.maxConsecutiveChars', label: 'Repeated Max', emoji: '🔁', inputLabel: 'Max consecutive identical characters (number)',   placeholder: '8',                        getValue: c => String(c.autoMod?.antiRepeatedText?.maxConsecutiveChars || 8), formatValue: v => `${v}+ chars` },
+        { keyPath: 'autoMod.antiRepeatedText.action', label: 'Repeated Action', emoji: '⚡', inputLabel: 'Action for repeated text (warn / timeout / kick / delete)',  placeholder: 'warn',                     getValue: c => c.autoMod?.antiRepeatedText?.action || 'warn',   formatValue: v => `\`${v}\`` },
+    ],
+    strikes: [
+        { keyPath: 'strikes.decayMs',               label: 'Decay Time (h)', emoji: '⏳', inputLabel: 'Hours after which violations reset (number)',                 placeholder: '24',                       getValue: c => String((c.strikes?.decayMs || 86400000) / 3600000), formatValue: v => `${v}h` },
+    ],
+    antimassmention: [
+        { keyPath: 'antiMassMention.action',         label: 'Action',         emoji: '⚡', inputLabel: 'Action (warn / timeout / kick / delete / none)',             placeholder: 'warn',                     getValue: c => c.antiMassMention?.action || 'warn',             formatValue: v => `\`${v}\`` },
+        { keyPath: 'antiMassMention.maxMentions',    label: 'Max Mentions',   emoji: '🔢', inputLabel: 'Max mentions per message before action (number)',             placeholder: '10',                       getValue: c => String(c.antiMassMention?.maxMentions || 10),    formatValue: v => `\`${v}\` mentions` },
+        { keyPath: 'antiMassMention.timeoutDurationMs', label: 'Timeout (s)', emoji: '⏱️', inputLabel: 'Timeout duration in seconds (e.g. 60 = 1 minute)',            placeholder: '60',                       getValue: c => String((c.antiMassMention?.timeoutDurationMs || 60000) / 1000), formatValue: v => `${v}s` },
+        { keyPath: 'antiMassMention.minViolationsForAction', label: 'Auto-action at', emoji: '⚠️', inputLabel: 'Violations before auto-action (number)',              placeholder: '2',                        getValue: c => String(c.antiMassMention?.minViolationsForAction || 2), formatValue: v => `${v} violations` },
+    ],
+    antiRaid: [
+        { keyPath: 'antiRaid.action',               label: 'Action',          emoji: '⚡', inputLabel: 'Action (lockdown / alert / restrict / none)',                    placeholder: 'lockdown',                 getValue: c => c.antiRaid?.action || 'lockdown',               formatValue: v => `\`${v}\`` },
+        { keyPath: 'antiRaid.joinThreshold',         label: 'Join Threshold', emoji: '📊', inputLabel: 'Number of joins within window to trigger (number)',           placeholder: '10',                       getValue: c => String(c.antiRaid?.joinThreshold || 10),         formatValue: v => `\`${v}\` joins` },
+        { keyPath: 'antiRaid.detectionWindowMs',     label: 'Window (s)',     emoji: '⏱️', inputLabel: 'Detection window in seconds (e.g. 60 = 1 minute)',             placeholder: '60',                       getValue: c => String((c.antiRaid?.detectionWindowMs || 60000) / 1000), formatValue: v => `${v}s` },
+    ],
+    antiNuke: [
+        { keyPath: 'antiNuke.action',                label: 'Action',          emoji: '⚡', inputLabel: 'Action (punish / kick / warn / none)',                        placeholder: 'punish',                   getValue: c => c.antiNuke?.action || 'punish',                 formatValue: v => `\`${v}\`` },
+        { keyPath: 'antiNuke.actionThreshold',       label: 'Action Threshold',emoji: '📊', inputLabel: 'Number of actions within window to trigger (number)',         placeholder: '5',                        getValue: c => String(c.antiNuke?.actionThreshold || 5),        formatValue: v => `\`${v}\` actions` },
+        { keyPath: 'antiNuke.detectionWindowMs',     label: 'Window (s)',     emoji: '⏱️', inputLabel: 'Detection window in seconds (e.g. 10)',                      placeholder: '10',                       getValue: c => String((c.antiNuke?.detectionWindowMs || 10000) / 1000), formatValue: v => `${v}s` },
+    ],
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
 
 function customId(base, guildId, suffix = '') {
     return suffix ? `${base}:${guildId}:${suffix}` : `${base}:${guildId}`;
@@ -50,7 +102,29 @@ function boolDisplay(val) {
     return val ? '✅ Enabled' : '❌ Disabled';
 }
 
-// ── Overview Embed ───────────────────────────────────────────
+function getNestedConfig(config, category) {
+    if (!config) return false;
+    const map = { antilink: 'antiLink', antispam: 'antiSpam', automod: 'autoMod', strikes: 'strikes',
+        antimassmention: 'antiMassMention', antiRaid: 'antiRaid', antiNuke: 'antiNuke' };
+    const key = map[category];
+    return key ? config[key]?.enabled || false : false;
+}
+
+function formatDuration(ms) {
+    if (ms < 0) return '0s';
+    const seconds = Math.floor(ms / 1000) % 60;
+    const minutes = Math.floor(ms / (1000 * 60)) % 60;
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+    return parts.join(' ');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  OVERVIEW EMBED
+// ═══════════════════════════════════════════════════════════════
 
 export function buildOverviewEmbed(config, guild) {
     const m = config;
@@ -66,18 +140,6 @@ export function buildOverviewEmbed(config, guild) {
         `${isEnabled(masterOn && m.antiNuke?.enabled)} **Anti-Nuke** — Stop channel/role deletion & mass bans`,
     ];
 
-    const logChannel = m.logChannelId
-        ? `<#${m.logChannelId}>`
-        : '`Not set`';
-
-    const ignoredRoles = m.ignoredRoles?.length
-        ? m.ignoredRoles.map(id => `<@&${id}>`).join(', ')
-        : '`None`';
-
-    const ignoredChannels = m.ignoredChannels?.length
-        ? m.ignoredChannels.map(id => `<#${id}>`).join(', ')
-        : '`None`';
-
     return createEmbed({
         title: `${masterOn ? '🛡️' : '⚙️'} Moderation Dashboard`,
         description: masterOn
@@ -85,39 +147,19 @@ export function buildOverviewEmbed(config, guild) {
             : `Moderation systems are **disabled** for **${guild.name}**. Enable the master toggle to start.`,
         color: masterOn ? 'success' : 'secondary',
         fields: [
-            {
-                name: `${isEnabled(masterOn)} Master Toggle`,
-                value: masterOn
-                    ? 'All moderation systems are **active**.\\nToggle off to disable everything at once.'
-                    : 'All moderation systems are **disabled**.',
-                inline: false,
-            },
-            {
-                name: '📋 Active Features',
-                value: featureLines.join('\n'),
-                inline: false,
-            },
-            {
-                name: '📢 Log Channel',
-                value: logChannel,
-                inline: true,
-            },
-            {
-                name: '🙈 Ignored Roles',
-                value: ignoredRoles,
-                inline: true,
-            },
-            {
-                name: '#️⃣ Ignored Channels',
-                value: ignoredChannels,
-                inline: true,
-            },
+            { name: `${isEnabled(masterOn)} Master Toggle`, value: masterOn ? 'All moderation systems are **active**.' : 'All moderation systems are **disabled**.', inline: false },
+            { name: '📋 Active Features', value: featureLines.join('\n'), inline: false },
+            { name: '📢 Log Channel', value: m.logChannelId ? `<#${m.logChannelId}>` : '`Not set`', inline: true },
+            { name: '🙈 Ignored Roles', value: m.ignoredRoles?.length ? m.ignoredRoles.map(id => `<@&${id}>`).join(', ') : '`None`', inline: true },
+            { name: '#️⃣ Ignored Channels', value: m.ignoredChannels?.length ? m.ignoredChannels.map(id => `<#${id}>`).join(', ') : '`None`', inline: true },
         ],
-        footer: 'Changes apply immediately — no save button needed',
+        footer: 'Changes apply immediately — click any setting button to edit',
     });
 }
 
-// ── Category Embed ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  CATEGORY EMBEDS
+// ═══════════════════════════════════════════════════════════════
 
 export function buildCategoryEmbed(category, config, guild) {
     const m = config;
@@ -127,25 +169,22 @@ export function buildCategoryEmbed(category, config, guild) {
         case 'antilink': {
             const al = m.antiLink || {};
             embed = createEmbed({
-                title: '🚫 Anti-Link',
-                description: 'Block Discord invite links and suspicious URLs.',
+                title: '🚫 Anti-Link', description: 'Block Discord invite links and suspicious URLs.',
                 color: al.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(al.enabled)} Status`, value: boolDisplay(al.enabled), inline: true },
                     { name: '⚡ Action', value: `\`${al.action || 'warn'}\``, inline: true },
                     { name: '⚠️ Auto-action after', value: `${al.minViolationsForAction || 3} violations`, inline: true },
                     { name: '✅ Allowed Invite Codes', value: (al.allowedInviteCodes || []).length > 0 ? `\`${al.allowedInviteCodes.join('`, `')}\`` : '`None`', inline: false },
-                    { name: '✅ Whitelisted Domains', value: (al.whitelistedDomains || []).length > 0 ? `\`${al.whitelistedDomains.join('`, `')}\`` : '`None`', inline: false },
+                    { name: '🌐 Whitelisted Domains', value: (al.whitelistedDomains || []).length > 0 ? `\`${al.whitelistedDomains.join('`, `')}\`` : '`None`', inline: false },
                 ],
-                footer: 'Action: warn = DM · timeout = mute · kick = remove',
             });
             break;
         }
         case 'antispam': {
             const as = m.antiSpam || {};
             embed = createEmbed({
-                title: '🤖 Anti-Spam',
-                description: 'Detect rapid message bursts and mention spam.',
+                title: '🤖 Anti-Spam', description: 'Detect rapid message bursts and mention spam.',
                 color: as.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(as.enabled)} Status`, value: boolDisplay(as.enabled), inline: true },
@@ -159,35 +198,28 @@ export function buildCategoryEmbed(category, config, guild) {
             break;
         }
         case 'automod': {
-            const am = m.autoMod || {};
-            const caps = am.antiCaps || {};
-            const repeat = am.antiRepeatedText || {};
+            const am = m.autoMod || {}; const caps = am.antiCaps || {}; const repeat = am.antiRepeatedText || {};
             embed = createEmbed({
-                title: '📖 Auto-Mod',
-                description: 'Filter blocked words, all-caps spam, and repeated text.',
+                title: '📖 Auto-Mod', description: 'Filter blocked words, all-caps spam, and repeated text.',
                 color: am.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(am.enabled)} Status`, value: boolDisplay(am.enabled), inline: true },
                     { name: '📝 Blocked Words', value: (am.blockedWords || []).length > 0 ? `\`${am.blockedWords.join('`, `')}\`` : '`None`', inline: false },
                     { name: '🔤 Caps Protection', value: caps.enabled ? `✅ ON — ${caps.minLength || 8}+ chars, ${caps.capsThreshold || 70}% caps, action: \`${caps.action || 'warn'}\`` : '❌ OFF', inline: false },
-                    { name: '🙈 Ignored Words', value: (caps.ignoredWords || []).length > 0 ? `\`${caps.ignoredWords.join('`, `')}\`` : '`None`', inline: false },
-                    { name: '🔁 Repeated Text', value: repeat.enabled ? `✅ ON — ${repeat.maxConsecutiveChars || 8}+ consecutive chars, action: \`${repeat.action || 'warn'}\`` : '❌ OFF', inline: false },
+                    { name: '🔁 Repeated Text', value: repeat.enabled ? `✅ ON — ${repeat.maxConsecutiveChars || 8}+ chars, action: \`${repeat.action || 'warn'}\`` : '❌ OFF', inline: false },
                 ],
             });
             break;
         }
         case 'strikes': {
             const st = m.strikes || {};
-            const tiers = (st.tiers || []).map(t =>
-                `**${t.threshold}+** → \`${t.action}\`${t.durationMs ? ` (${formatDuration(t.durationMs)})` : ''}`
-            ).join('\n');
+            const tiers = (st.tiers || []).map(t => `**${t.threshold}+** → \`${t.action}\`${t.durationMs ? ` (${formatDuration(t.durationMs)})` : ''}`).join('\n');
             embed = createEmbed({
-                title: '⚡ Strike System',
-                description: 'Auto-escalate punishment as violations accumulate.',
+                title: '⚡ Strike System', description: 'Auto-escalate punishment as violations accumulate.',
                 color: st.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(st.enabled)} Status`, value: boolDisplay(st.enabled), inline: true },
-                    { name: '⏳ Strike Decay', value: `After \`24h\` without violations`, inline: true },
+                    { name: '⏳ Strike Decay', value: `After \`${Math.round((st.decayMs || 86400000) / 3600000)}h\` without violations`, inline: true },
                     { name: '📈 Escalation Tiers', value: tiers || '`No tiers configured`', inline: false },
                 ],
             });
@@ -196,8 +228,7 @@ export function buildCategoryEmbed(category, config, guild) {
         case 'antimassmention': {
             const amm = m.antiMassMention || {};
             embed = createEmbed({
-                title: '📣 Anti-Mass Mention',
-                description: 'Detect users abusing mentions — mass pings, @everyone, role mentions.',
+                title: '📣 Anti-Mass Mention', description: 'Detect users abusing mentions — mass pings, @everyone, role mentions.',
                 color: amm.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(amm.enabled)} Status`, value: boolDisplay(amm.enabled), inline: true },
@@ -208,15 +239,13 @@ export function buildCategoryEmbed(category, config, guild) {
                     { name: '⚠️ Auto-action after', value: `${amm.minViolationsForAction || 2} violations`, inline: true },
                     { name: '✅ Allowed Roles', value: (amm.allowedRoles || []).length > 0 ? (amm.allowedRoles || []).map(id => `<@&${id}>`).join(', ') : '`None`', inline: false },
                 ],
-                footer: 'Allowed roles bypass all mass-mention checks',
             });
             break;
         }
         case 'antiRaid': {
             const ar = m.antiRaid || {};
             embed = createEmbed({
-                title: '🚨 Anti-Raid Protection',
-                description: 'Detect sudden server attacks from mass joins.',
+                title: '🚨 Anti-Raid Protection', description: 'Detect sudden server attacks from mass joins.',
                 color: ar.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(ar.enabled)} Status`, value: boolDisplay(ar.enabled), inline: true },
@@ -226,15 +255,13 @@ export function buildCategoryEmbed(category, config, guild) {
                     { name: '🔔 Alert Moderators', value: ar.alertModerators !== false ? '✅ Yes' : '❌ No', inline: true },
                     { name: '🆕 Restrict New Accounts', value: ar.restrictNewAccounts !== false ? `✅ Yes (< ${Math.round((ar.newAccountAgeMs || 604800000) / 86400000)} days)` : '❌ No', inline: false },
                 ],
-                footer: 'Lockdown disables SendMessages for @everyone until reset',
             });
             break;
         }
         case 'antiNuke': {
             const an = m.antiNuke || {};
             embed = createEmbed({
-                title: '💣 Anti-Nuke Protection',
-                description: 'Protect server settings from destructive actions — channel/role deletion, mass bans.',
+                title: '💣 Anti-Nuke Protection', description: 'Protect server settings from destructive actions.',
                 color: an.enabled ? 'success' : 'secondary',
                 fields: [
                     { name: `${isEnabled(an.enabled)} Status`, value: boolDisplay(an.enabled), inline: true },
@@ -244,7 +271,6 @@ export function buildCategoryEmbed(category, config, guild) {
                     { name: '🔔 Notify Staff', value: an.notifyStaff !== false ? '✅ Yes' : '❌ No', inline: true },
                     { name: '🔄 Restore Settings', value: an.restoreSettings !== false ? '✅ Yes' : '❌ No', inline: false },
                 ],
-                footer: 'Monitors: channel/role create/delete, mass bans, webhooks',
             });
             break;
         }
@@ -255,48 +281,28 @@ export function buildCategoryEmbed(category, config, guild) {
     return embed;
 }
 
-// ── Dashboard Components ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  COMPONENT BUILDERS
+// ═══════════════════════════════════════════════════════════════
 
 export function buildOverviewComponents(guildId, config) {
     const masterOn = config.enabled;
 
     const categoryOptions = [
+        ['Anti-Link', '🚫', 'antilink'],
+        ['Anti-Spam', '🤖', 'antispam'],
+        ['Auto-Mod', '📖', 'automod'],
+        ['Strike System', '⚡', 'strikes'],
+        ['Anti-Mass Mention', '📣', 'antimassmention'],
+        ['Anti-Raid', '🚨', 'antiRaid'],
+        ['Anti-Nuke', '💣', 'antiNuke'],
+    ].map(([label, emoji, value]) =>
         new StringSelectMenuOptionBuilder()
-            .setLabel('Anti-Link')
-            .setDescription(`${isEnabled(masterOn && config.antiLink?.enabled)} Block Discord invites & suspicious URLs`)
-            .setValue('antilink')
-            .setEmoji('🚫'),
-        new StringSelectMenuOptionBuilder()
-            .setLabel('Anti-Spam')
-            .setDescription(`${isEnabled(masterOn && config.antiSpam?.enabled)} Detect rapid messages & mention spam`)
-            .setValue('antispam')
-            .setEmoji('🤖'),
-        new StringSelectMenuOptionBuilder()
-            .setLabel('Auto-Mod')
-            .setDescription(`${isEnabled(masterOn && config.autoMod?.enabled)} Blocked words, caps, repeated text`)
-            .setValue('automod')
-            .setEmoji('📖'),
-        new StringSelectMenuOptionBuilder()
-            .setLabel('Strike System')
-            .setDescription(`${isEnabled(masterOn && config.strikes?.enabled)} Progressive punishment escalation`)
-            .setValue('strikes')
-            .setEmoji('⚡'),
-        new StringSelectMenuOptionBuilder()
-            .setLabel('Anti-Mass Mention')
-            .setDescription(`${isEnabled(masterOn && config.antiMassMention?.enabled)} Block mass pings & @everyone`)
-            .setValue('antimassmention')
-            .setEmoji('📣'),
-        new StringSelectMenuOptionBuilder()
-            .setLabel('Anti-Raid')
-            .setDescription(`${isEnabled(masterOn && config.antiRaid?.enabled)} Join spike detection & lockdown`)
-            .setValue('antiRaid')
-            .setEmoji('🚨'),
-        new StringSelectMenuOptionBuilder()
-            .setLabel('Anti-Nuke')
-            .setDescription(`${isEnabled(masterOn && config.antiNuke?.enabled)} Destructive action prevention`)
-            .setValue('antiNuke')
-            .setEmoji('💣'),
-    ];
+            .setLabel(label)
+            .setDescription(`${isEnabled(masterOn && getNestedConfig(config, value))} Configure ${label}`)
+            .setValue(value)
+            .setEmoji(emoji)
+    );
 
     return [
         new ActionRowBuilder().addComponents(
@@ -320,20 +326,21 @@ export function buildOverviewComponents(guildId, config) {
     ];
 }
 
+/**
+ * Build category page components including interactive setting buttons.
+ * Buttons are generated from CATEGORY_SETTINGS map — first 4 in row1, rest in row2.
+ */
 export function buildCategoryComponents(guildId, category, config) {
     const rows = [];
-
-    // Toggle row
     const isFeatureOn = getNestedConfig(config, category);
-    const toggleCustomId = category === 'antilink' ? TOGGLE_ANTILINK
-        : category === 'antispam' ? TOGGLE_ANTISPAM
-        : category === 'automod' ? TOGGLE_AUTOMOD
-        : category === 'strikes' ? TOGGLE_STRIKES
-        : category === 'antimassmention' ? TOGGLE_ANTI_MASS_MENTION
-        : category === 'antiRaid' ? TOGGLE_ANTI_RAID
-        : category === 'antiNuke' ? TOGGLE_ANTI_NUKE
-        : TOGGLE_STRIKES;
 
+    const toggleMap = {
+        antilink: TOGGLE_ANTILINK, antispam: TOGGLE_ANTISPAM, automod: TOGGLE_AUTOMOD,
+        strikes: TOGGLE_STRIKES, antimassmention: TOGGLE_ANTI_MASS_MENTION,
+        antiRaid: TOGGLE_ANTI_RAID, antiNuke: TOGGLE_ANTI_NUKE,
+    };
+
+    // Navigation + toggle row
     rows.push(
         new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -341,7 +348,7 @@ export function buildCategoryComponents(guildId, category, config) {
                 .setLabel('◀️ Back')
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
-                .setCustomId(customId(toggleCustomId, guildId, category))
+                .setCustomId(customId(toggleMap[category] || TOGGLE_STRIKES, guildId, category))
                 .setLabel(isFeatureOn ? '🔴 Disable' : '🟢 Enable')
                 .setStyle(isFeatureOn ? ButtonStyle.Danger : ButtonStyle.Success),
             new ButtonBuilder()
@@ -351,24 +358,30 @@ export function buildCategoryComponents(guildId, category, config) {
         ),
     );
 
-    // Auto-Mod specific: add Ignored Words management button
-    if (category === 'automod' && isFeatureOn) {
-        const capsConfig = config.autoMod?.antiCaps || {};
-        const wordCount = (capsConfig.ignoredWords || []).length;
-        rows.push(
-            new ActionRowBuilder().addComponents(
+    // Setting buttons — generated from CATEGORY_SETTINGS map
+    if (isFeatureOn) {
+        const settings = CATEGORY_SETTINGS[category] || [];
+        if (settings.length > 0) {
+            const buttons = settings.map((setting, idx) =>
                 new ButtonBuilder()
-                    .setCustomId(customId(IGNORED_WORDS, guildId, 'automod'))
-                    .setLabel(`🙈 Ignored Words (${wordCount})`)
-                    .setStyle(ButtonStyle.Secondary),
-            ),
-        );
+                    .setCustomId(customId(SETTING_BUTTON, guildId, `${category}:${idx}`))
+                    .setLabel(`${setting.emoji} ${setting.label}`)
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+            // Split into rows of 4 buttons max
+            for (let i = 0; i < buttons.length; i += 4) {
+                rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 4)));
+            }
+        }
     }
 
     return rows;
 }
 
-// ── View Builder ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  VIEW BUILDER
+// ═══════════════════════════════════════════════════════════════
 
 export async function buildModDashboardView(client, guildId, guild, view = 'overview', category = null) {
     const config = await getModerationConfig(client, guildId);
@@ -387,7 +400,9 @@ export async function buildModDashboardView(client, guildId, guild, view = 'over
     };
 }
 
-// ── Interaction Handler ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  INTERACTION HANDLER
+// ═══════════════════════════════════════════════════════════════
 
 export async function handleDashboardComponent(interaction, client) {
     const parts = interaction.customId.split(':');
@@ -402,6 +417,7 @@ export async function handleDashboardComponent(interaction, client) {
 
     const guild = interaction.guild;
 
+    // ── Category select menu ──
     if (action === CATEGORY_SELECT) {
         const selected = interaction.values[0];
         const view = await buildModDashboardView(client, guildId, guild, 'category', selected);
@@ -409,95 +425,137 @@ export async function handleDashboardComponent(interaction, client) {
         return;
     }
 
-    // ── Ignored Words button — show modal (no deferUpdate yet) ──
-    if (action === IGNORED_WORDS) {
+    // ── Setting button — show modal (NO deferUpdate — required for modals) ──
+    if (action === SETTING_BUTTON) {
         const config = await getModerationConfig(client, guildId);
-        const currentWords = (config.autoMod?.antiCaps?.ignoredWords || []).join(', ');
+        // suffix format: "category:settingIndex"
+        const [category, settingIndex] = (suffix || ':0').split(':');
+        const settings = CATEGORY_SETTINGS[category] || [];
+        const settingDef = settings[parseInt(settingIndex) || 0];
+        if (!settingDef) {
+            await interaction.reply({ content: 'Setting not found.', ephemeral: true });
+            return;
+        }
 
+        const currentValue = settingDef.getValue(config);
         const modal = new ModalBuilder()
-            .setCustomId(customId(IGNORED_WORDS_MODAL, guildId))
-            .setTitle('Manage Ignored Words (Anti-Caps)');
+            .setCustomId(customId(SETTING_MODAL, guildId, `${category}:${settingIndex}`))
+            .setTitle(`Edit: ${settingDef.label}`);
 
-        const wordsInput = new TextInputBuilder()
-            .setCustomId('ignored_words')
-            .setLabel('Words to ignore (comma-separated)')
-            .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('USA, NASA, FBI, CIA, LOL, OMG')
-            .setValue(currentWords)
-            .setRequired(false)
+        const input = new TextInputBuilder()
+            .setCustomId('setting_value')
+            .setLabel(settingDef.inputLabel)
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder(settingDef.placeholder)
+            .setValue(String(currentValue))
+            .setRequired(true)
             .setMaxLength(1000);
 
-        modal.addComponents(new ActionRowBuilder().addComponents(wordsInput));
+        modal.addComponents(new ActionRowBuilder().addComponents(input));
         await interaction.showModal(modal);
 
-        // Wait for the modal submission
+        // Wait for modal submission
         try {
             const modalSubmit = await interaction.awaitModalSubmit({
                 filter: (i) =>
-                    i.customId === customId(IGNORED_WORDS_MODAL, guildId) &&
+                    i.customId === customId(SETTING_MODAL, guildId, `${category}:${settingIndex}`) &&
                     i.user.id === interaction.user.id,
                 time: 120_000,
             });
 
-            const rawValue = modalSubmit.fields.getTextInputValue('ignored_words').trim();
-            const words = rawValue
-                ? rawValue.split(',').map(w => w.trim().toUpperCase()).filter(w => w.length > 0)
-                : [];
+            const rawValue = modalSubmit.fields.getTextInputValue('setting_value').trim();
 
-            await updateModerationSetting(client, guildId, 'autoMod.antiCaps.ignoredWords', words);
+            // Parse value based on setting type
+            let parsedValue;
+            const currentSetting = CATEGORY_SETTINGS[category]?.[parseInt(settingIndex)];
+            if (!currentSetting) {
+                await modalSubmit.reply({ content: 'Setting expired. Please refresh the dashboard.', ephemeral: true });
+                return;
+            }
 
-            const view = await buildModDashboardView(client, guildId, guild, 'category', 'automod');
-            await modalSubmit.update({
-                embeds: [view.embed],
-                components: view.components,
-            });
+            // Check if this is a list setting (comma-separated) or number
+            if (currentSetting.inputLabel.toLowerCase().includes('comma-separated') ||
+                currentSetting.inputLabel.toLowerCase().includes('(comma')) {
+                parsedValue = rawValue ? rawValue.split(',').map(w => w.trim()).filter(w => w.length > 0) : [];
+            } else if (currentSetting.inputLabel.toLowerCase().includes('(number)') ||
+                       currentSetting.inputLabel.toLowerCase().includes('threshold') ||
+                       currentSetting.inputLabel.toLowerCase().includes('seconds') ||
+                       currentSetting.inputLabel.toLowerCase().includes('hours') ||
+                       currentSetting.inputLabel.toLowerCase().includes('number')) {
+                // Check if it's a time value (seconds/hours) that needs conversion to ms
+                if (currentSetting.keyPath.endsWith('Ms') || currentSetting.keyPath.endsWith('ms')) {
+                    // Value is in seconds in the UI, convert to ms
+                    parsedValue = parseInt(rawValue, 10) * 1000;
+                } else if (currentSetting.keyPath.endsWith('decayMs')) {
+                    // Value is in hours, convert to ms
+                    parsedValue = parseInt(rawValue, 10) * 3600000;
+                } else if (currentSetting.keyPath.endsWith('capsThreshold')) {
+                    parsedValue = parseInt(rawValue, 10);
+                } else {
+                    const num = parseInt(rawValue, 10);
+                    if (isNaN(num) || num <= 0) {
+                        await modalSubmit.reply({ content: 'Please enter a valid positive number.', ephemeral: true });
+                        return;
+                    }
+                    parsedValue = num;
+                }
+            } else {
+                parsedValue = rawValue;
+            }
 
-            // Send a follow-up confirmation that auto-deletes
+            await updateModerationSetting(client, guildId, currentSetting.keyPath, parsedValue);
+
+            const view = await buildModDashboardView(client, guildId, guild, 'category', category);
+            await modalSubmit.update({ embeds: [view.embed], components: view.components });
+
+            const displayValue = Array.isArray(parsedValue)
+                ? parsedValue.join('`, `')
+                : parsedValue;
+
             await modalSubmit.followUp({
-                embeds: [successEmbed('Ignored Words Updated',
-                    `Anti-Caps will now ignore **${words.length}** word(s): \`${words.join('`, `') || 'None'}\``
+                embeds: [successEmbed('Setting Updated',
+                    `**${currentSetting.label}** changed to: \`${displayValue}\``
                 )],
                 flags: MessageFlags.Ephemeral,
             });
         } catch (err) {
-            // Modal timed out or user cancelled — do nothing
+            // Modal timed out or cancelled — do nothing
             return;
         }
         return;
     }
 
-    // For button actions, defer update first
+    // ── For all other buttons, defer update ──
     await interaction.deferUpdate();
 
+    // ── Home / Refresh ──
     if (action === HOME_PAGE || action === REFRESH) {
         const view = await buildModDashboardView(client, guildId, guild, 'overview');
         await interaction.editReply({ embeds: [view.embed], components: view.components });
         return;
     }
 
+    // ── Master toggle ──
     if (action === TOGGLE_MASTER) {
         const config = await getModerationConfig(client, guildId);
-        const newVal = !config.enabled;
-        await updateModerationSetting(client, guildId, 'enabled', newVal);
+        await updateModerationSetting(client, guildId, 'enabled', !config.enabled);
         const view = await buildModDashboardView(client, guildId, guild, 'overview');
         await interaction.editReply({ embeds: [view.embed], components: view.components });
         return;
     }
 
-    // Toggle individual features from category pages
-    if ([TOGGLE_ANTILINK, TOGGLE_ANTISPAM, TOGGLE_AUTOMOD, TOGGLE_STRIKES, TOGGLE_ANTI_MASS_MENTION, TOGGLE_ANTI_RAID, TOGGLE_ANTI_NUKE].includes(action)) {
+    // ── Feature toggle ──
+    const TOGGLES = [TOGGLE_ANTILINK, TOGGLE_ANTISPAM, TOGGLE_AUTOMOD, TOGGLE_STRIKES,
+                     TOGGLE_ANTI_MASS_MENTION, TOGGLE_ANTI_RAID, TOGGLE_ANTI_NUKE];
+    if (TOGGLES.includes(action)) {
         const featureMap = {
-            [TOGGLE_ANTILINK]: 'antiLink.enabled',
-            [TOGGLE_ANTISPAM]: 'antiSpam.enabled',
-            [TOGGLE_AUTOMOD]: 'autoMod.enabled',
-            [TOGGLE_STRIKES]: 'strikes.enabled',
+            [TOGGLE_ANTILINK]: 'antiLink.enabled', [TOGGLE_ANTISPAM]: 'antiSpam.enabled',
+            [TOGGLE_AUTOMOD]: 'autoMod.enabled', [TOGGLE_STRIKES]: 'strikes.enabled',
             [TOGGLE_ANTI_MASS_MENTION]: 'antiMassMention.enabled',
-            [TOGGLE_ANTI_RAID]: 'antiRaid.enabled',
-            [TOGGLE_ANTI_NUKE]: 'antiNuke.enabled',
+            [TOGGLE_ANTI_RAID]: 'antiRaid.enabled', [TOGGLE_ANTI_NUKE]: 'antiNuke.enabled',
         };
-        const keyPath = featureMap[action];
-        const category = suffix || keyPath.split('.')[0];
-        await toggleModerationFeature(client, guildId, keyPath);
+        const category = suffix || featureMap[action].split('.')[0];
+        await toggleModerationFeature(client, guildId, featureMap[action]);
         const view = await buildModDashboardView(client, guildId, guild, 'category', category);
         await interaction.editReply({ embeds: [view.embed], components: view.components });
         return;
@@ -506,33 +564,9 @@ export async function handleDashboardComponent(interaction, client) {
     await interaction.editReply({ content: 'Unknown dashboard action.', embeds: [], components: [] });
 }
 
-// ── Utilities ────────────────────────────────────────────────
-
-function getNestedConfig(config, category) {
-    if (!config) return false;
-    switch (category) {
-        case 'antilink': return config.antiLink?.enabled || false;
-        case 'antispam': return config.antiSpam?.enabled || false;
-        case 'automod':  return config.autoMod?.enabled || false;
-        case 'strikes':  return config.strikes?.enabled || false;
-        case 'antimassmention': return config.antiMassMention?.enabled || false;
-        case 'antiRaid': return config.antiRaid?.enabled || false;
-        case 'antiNuke': return config.antiNuke?.enabled || false;
-        default: return false;
-    }
-}
-
-function formatDuration(ms) {
-    if (ms < 0) return '0s';
-    const seconds = Math.floor(ms / 1000) % 60;
-    const minutes = Math.floor(ms / (1000 * 60)) % 60;
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const parts = [];
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
-    return parts.join(' ');
-}
+// ═══════════════════════════════════════════════════════════════
+//  EXPORTS
+// ═══════════════════════════════════════════════════════════════
 
 export function isModDashboardCustomId(customIdValue) {
     return customIdValue.startsWith(DASHBOARD_PREFIX + '_');
