@@ -6,7 +6,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-optional-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-Support_Server-5865F2?logo=discord&logoColor=white)](https://discord.gg/your-support-server)
+[![Discord](https://img.shields.io/badge/Discord-Support_Server-5865F2?logo=discord&logoColor=white)](https://discord.gg/charon)
 
 ---
 
@@ -31,7 +31,7 @@
 
 Need help? Join the official ClypherBot Discord server!
 
-[![Discord](https://img.shields.io/badge/Discord-Support_Server-5865F2?logo=discord&logoColor=white)](https://discord.gg/your-support-server)
+[![Discord](https://img.shields.io/badge/Discord-Support_Server-5865F2?logo=discord&logoColor=white)](https://discord.gg/charon)
 
 - 🛠️ **Setup Help** — Get assistance with installation and configuration
 - 🐛 **Bug Reports** — Report issues you encounter
