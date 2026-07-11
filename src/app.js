@@ -342,6 +342,17 @@ class ClypherBot extends Client {
       await shutdownMusic(this);
       logger.info('✅ Music players stopped');
 
+      // Flush in-memory storage to disk (critical for file-persisted fallback)
+      if (this.db && this.db.db && typeof this.db.db.flush === 'function') {
+        logger.info('Flushing memory storage to disk...');
+        try {
+          await this.db.db.flush();
+          logger.info('✅ Memory storage flushed to disk');
+        } catch (error) {
+          logger.warn('Error flushing memory storage:', error.message);
+        }
+      }
+
       // Close database connection
       if (this.db && this.db.db) {
         logger.info('Closing database connection...');

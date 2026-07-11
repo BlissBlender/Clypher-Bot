@@ -2,6 +2,7 @@ import { pgDb } from '../postgresDatabase.js';
 import { MemoryStorage } from '../memoryStorage.js';
 import { logger } from '../logger.js';
 import { validateGuildConfigOrThrow } from '../schemas.js';
+import path from 'path';
 
 class DatabaseWrapper {
     constructor() {
@@ -46,12 +47,14 @@ class DatabaseWrapper {
             }
         }
 
-        this.db = new MemoryStorage();
+        const storagePath = path.resolve('data', 'persistent_storage.json');
+        this.db = new MemoryStorage(storagePath);
         this.useFallback = true;
         this.connectionType = 'memory';
         this.degradedReason = 'POSTGRES_UNAVAILABLE';
-        logger.warn('⚠️ DATABASE DEGRADED MODE ENABLED - Using in-memory storage (data will be lost on restart)');
-        logger.warn('⚠️ Please check PostgreSQL connection and restart the bot when fixed');
+        logger.warn('⚠️ PostgreSQL unavailable — using file-persisted storage (data survives restarts)');
+        logger.warn(`   Storage file: ${storagePath}`);
+        logger.warn('⚠️ For better performance, set up PostgreSQL and restart the bot');
         this.initialized = true;
         this.degradedModeWarningShown = true;
     }
