@@ -139,7 +139,15 @@ export default {
             } else if (item.type === "consumable") {
                 userData.inventory[itemId] =
                     (userData.inventory[itemId] || 0) + quantity;
+            } else if (item.type === "tool") {
+                // Tools, collectibles, protection items, fun items, luxury items
+                userData.inventory[itemId] =
+                    (userData.inventory[itemId] || 0) + quantity;
             }
+
+            // Track purchase stats
+            userData.totalTransactions = (userData.totalTransactions || 0) + 1;
+            userData.totalSpent = (userData.totalSpent || 0) + totalCost;
 
             await setEconomyData(client, guildId, userId, userData);
 
