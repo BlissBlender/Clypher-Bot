@@ -6,6 +6,7 @@ import { normalizeEconomyData } from './schemas.js';
 import { logger } from './logger.js';
 import { validateDiscordId, validateNumber } from './validation.js';
 import { DEFAULT_ECONOMY_DATA } from './constants.js';
+import { shopItems } from '../config/shop/items.js';
 
 const ECONOMY_CONFIG = BotConfig.economy || {};
 const BASE_BANK_CAPACITY = ECONOMY_CONFIG.baseBankCapacity || 10000;
@@ -329,6 +330,65 @@ export async function removeMoney(client, guildId, userId, amount, type = 'walle
         logger.error(`Error removing money from ${type} for user ${userId} in guild ${guildId}`, error);
         return { success: false, error: 'An error occurred while processing your request' };
     }
+}
+
+/** ── Net Worth & Inventory Value ──────────────────────────── */
+
+export function calculateInventoryValue(inventory = {}) {
+    let totalValue = 0;
+    for (const [itemId, quantity] of Object.entries(inventory)) {
+        if (quantity <= 0) continue;
+        const item = shopItems.find(i => i.id === itemId);
+        if (item) {
+            totalValue += item.price * quantity;
+        }
+    }
+    return totalValue;
+}
+
+export function calculateNetWorth(userData) {
+    const wallet = userData.wallet || 0;
+    const bank = userData.bank || 0;
+    const inventoryValue = calculateInventoryValue(userData.inventory || {});
+    const properties = Array.isArray(userData.properties) ? userData.properties : [];
+    const propertyValue = properties.reduce((sum, p) => sum + (p.value || 0), 0);
+    return wallet + bank + inventoryValue + propertyValue;
+}
+
+/** ── Economic Tiers ──────────────────────────────────────── */
+
+export function getEconomicTier(netWorth) {
+    const tiers = [
+        { name: 'Destitute',    emoji: '💀', min: 0,          color: '#718096' },
+        { name: 'Peasant',      emoji: '🌾', min: 1000,      color: '#A0AEC0' },
+        { name: 'Laborer',      emoji: '⚒️', min: 10000,     color: '#CBD5E0' },
+        { name: 'Merchant',     emoji: '🧑‍💼', min: 50000,     color: '#68D391' },
+        { name: 'Noble',        emoji: '👑', min: 250000,    color: '#48BB78' },
+        { name: 'Magnate',      emoji: '🏭', min: 1000000,   color: '#38B2AC' },
+        { name: 'Tycoon',       emoji: '💎', min: 5000000,   color: '#805AD5' },
+        { name: 'Baron',        emoji: '🏰', min: 25000000,  color: '#D69E2E' },
+        { name: 'Plutocrat',    emoji: '🌌', min: 100000000, color: '#DD6B20' },
+        { name: 'Sovereign',    emoji: '⭐', min: 1000000000,color: '#E53E3E' },
+    ];
+    
+    for (let i = tiers.length - 1; i >= 0; i--) {
+        if (netWorth >= tiers[i].min) return tiers[i];
+    }
+    return tiers[0];
+}
+
+/** ── Format Helpers ──────────────────────────────────────── */
+
+export function formatTier(tier) {
+    return `${tier.emoji} **${tier.name}**`;
+}
+
+export function getCurrencySymbol() {
+    return BotConfig.economy.currency?.symbol || '$';
+}
+
+export function getCurrencyName(plural = true) {
+    return plural ? (BotConfig.economy.currency?.namePlural || 'coins') : (BotConfig.economy.currency?.name || 'coin');
 }
 
 export function getShopInventory() {

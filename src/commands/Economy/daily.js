@@ -7,6 +7,8 @@ import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHan
 import { botConfig } from '../../config/bot.js';
 import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+import { logTransaction } from '../../services/transactionService.js';
+import { checkAchievements } from '../../services/achievementService.js';
 
 export default {
     skipRegistration: true,
@@ -67,28 +69,101 @@ export default {
                 hasPremiumRole = true;
             }
 
+            // ── Streak tracking ──
+            const lastDailyDate = new Date(userData.lastDaily || 0);
+            const nowDate = new Date(now);
+            const daysSinceLastClaim = Math.floor((now - (userData.lastDaily || 0)) / 86400000);
+
+            let streak = userData.dailyStreak || 0;
+            if (daysSinceLastClaim <= 1 && userData.lastDaily > 0) {
+                // Within 1 day — continue streak
+                streak += 1;
+            } else if (daysSinceLastClaim > 1) {
+                // Missed a day — reset
+                streak = 1;
+            } else {
+                // First claim ever
+                streak = 1;
+            }
+
+            // Streak bonus
+            const streakBonusPerDay = botConfig.economy?.streaks?.streakBonusPerDay || 50;
+            const streakBonus = streak * streakBonusPerDay;
+            earned += streakBonus;
+
+            // Update highest streak
+            if (streak > (userData.highestStreak || 0)) {
+                userData.highestStreak = streak;
+            }
+
+            // ── Milestone rewards ──
+            let milestoneReward = '';
+            const milestones = botConfig.economy?.streaks || {};
+            if (streak === 7 && milestones.milestone7) {
+                earned += milestones.milestone7.reward;
+                if (milestones.milestone7.item) {
+                    userData.inventory[milestones.milestone7.item] = (userData.inventory[milestones.milestone7.item] || 0) + 1;
+                    milestoneReward = `\n🎁 **7-Day Streak Bonus:** +${milestones.milestone7.reward.toLocaleString()} coins + 1x ${milestones.milestone7.item}!`;
+                }
+            } else if (streak === 30 && milestones.milestone30) {
+                earned += milestones.milestone30.reward;
+                if (milestones.milestone30.item) {
+                    userData.inventory[milestones.milestone30.item] = (userData.inventory[milestones.milestone30.item] || 0) + 1;
+                    milestoneReward = `\n🎁 **30-Day Streak Bonus:** +${milestones.milestone30.reward.toLocaleString()} coins + 1x ${milestones.milestone30.item}!`;
+                }
+            } else if (streak === 100 && milestones.milestone100) {
+                earned += milestones.milestone100.reward;
+                if (milestones.milestone100.item) {
+                    userData.inventory[milestones.milestone100.item] = (userData.inventory[milestones.milestone100.item] || 0) + 1;
+                    milestoneReward = `\n🎁 **100-Day Streak Bonus:** +${milestones.milestone100.reward.toLocaleString()} coins + 1x ${milestones.milestone100.item}!`;
+                }
+            }
+
             userData.wallet = (userData.wallet || 0) + earned;
             userData.lastDaily = now;
+            userData.dailyStreak = streak;
+            userData.totalTransactions = (userData.totalTransactions || 0) + 1;
+            userData.totalEarned = (userData.totalEarned || 0) + earned;
 
             await setEconomyData(client, guildId, userId, userData);
+
+            // Log transaction
+            await logTransaction(client, guildId, userId, {
+                amount: earned, type: 'INCOME', source: 'daily',
+                description: `Daily claim (Streak: ${streak})${milestoneReward ? ' + Milestone!' : ''}`,
+                metadata: { streak, hasPremium: hasPremiumRole, streakBonus },
+            });
+
+            // Check achievements
+            try {
+                await checkAchievements(client, guildId, userId);
+            } catch { /* silent */ }
 
             logger.info(`[ECONOMY_TRANSACTION] Daily claimed`, {
                 userId,
                 guildId,
                 amount: earned,
+                streak,
                 newWallet: userData.wallet,
                 hasPremium: hasPremiumRole,
                 timestamp: new Date().toISOString()
             });
 
+            const streakDisplay = streak > 1 ? `\n🔥 **Streak:** ${streak} day(s)${streakBonus > 0 ? ` (+${streakBonus.toLocaleString()} bonus)` : ''}` : '';
+
             const embed = createEmbed({
                 title: "✅ Daily Claimed!",
-                description: `You have claimed your daily **$${earned.toLocaleString()}**!${bonusMessage}`,
+                description: `You have claimed your daily **$${earned.toLocaleString()}**!${bonusMessage}${streakDisplay}${milestoneReward}`,
                 color: 'money'
             })
                 .addFields({
                     name: "New Cash Balance",
                     value: `$${userData.wallet.toLocaleString()}`,
+                    inline: true,
+                })
+                .addFields({
+                    name: "Current Streak",
+                    value: `🔥 ${streak} day(s)`,
                     inline: true,
                 })
                 .setFooter({

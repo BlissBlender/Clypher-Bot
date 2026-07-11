@@ -216,6 +216,123 @@ export const botConfig = {
 
     // ── Lottery ──
     lotteryTicketPrice: 500,
+
+    // ── Trading ──
+    trade: {
+      cooldownMs: 30000,
+      maxItemsPerTrade: 5,
+      maxCurrencyPerTrade: 10000000,
+      confirmTimeoutMs: 120000,
+    },
+
+    // ── Marketplace ──
+    market: {
+      listingFee: 0.05,           // 5% listing fee
+      saleTax: 0.03,              // 3% tax on sale
+      maxListingsPerUser: 10,
+      listingDurationMs: 86400000, // 24 hours
+      minPrice: 100,
+    },
+
+    // ── Properties ──
+    properties: {
+      starterHouse: { price: 100000, income: 500, name: 'Starter House', emoji: '🏠' },
+      shop:        { price: 250000, income: 1500, name: 'Small Shop', emoji: '🏪' },
+      warehouse:   { price: 500000, income: 3000, name: 'Warehouse', emoji: '🏭' },
+      factory:     { price: 1000000, income: 7500, name: 'Industrial Factory', emoji: '🏗️' },
+      office:      { price: 2000000, income: 15000, name: 'Corporate Office', emoji: '🏢' },
+      mansion:     { price: 5000000, income: 40000, name: 'Luxury Mansion', emoji: '🏰' },
+      upgradeCostMultiplier: 2.0,
+      incomePerLevel: 1.5,
+      maxLevel: 10,
+    },
+
+    // ── Pets ──
+    pets: {
+      adoptionCost: 25000,
+      feedCost: 500,
+      trainingCost: 2000,
+      maxXpPerFeed: 25,
+      xpPerTraining: 50,
+      maxLevel: 20,
+      petTypes: {
+        dog:    { name: 'Dog',    emoji: '🐕', bonus: { work: 1.15 },       desc: 'Small work earning bonus' },
+        cat:    { name: 'Cat',    emoji: '🐈', bonus: { gamble: 0.05 },     desc: 'Gambling luck bonus' },
+        dragon: { name: 'Dragon', emoji: '🐉', bonus: { work: 1.5 },       desc: 'Rare high-level earning bonus' },
+        owl:    { name: 'Owl',    emoji: '🦉', bonus: { crime: 0.1 },      desc: 'Crime success rate bonus' },
+        fox:    { name: 'Fox',    emoji: '🦊', bonus: { fish: 1.3 },       desc: 'Fishing yield bonus' },
+        bear:   { name: 'Bear',   emoji: '🐻', bonus: { mine: 1.3 },       desc: 'Mining yield bonus' },
+      },
+      feedCooldownMs: 3600000,   // 1 hour
+      trainCooldownMs: 7200000,   // 2 hours
+    },
+
+    // ── Achievements ──
+    achievements: {
+      wealth: [
+        { id: 'first_10k',    name: 'Getting Started',   desc: 'Accumulate 10,000 total wealth',      reward: 5000,  threshold: 10000 },
+        { id: 'first_100k',   name: 'Well Off',          desc: 'Accumulate 100,000 total wealth',     reward: 25000,  threshold: 100000 },
+        { id: 'millionaire',  name: 'Millionaire',       desc: 'Accumulate 1,000,000 total wealth',   reward: 100000, threshold: 1000000 },
+        { id: 'multi_million',name: 'Multi-Millionaire', desc: 'Accumulate 10,000,000 total wealth',  reward: 500000, threshold: 10000000 },
+        { id: 'billionaire',  name: 'Billionaire',       desc: 'Accumulate 1,000,000,000 total wealth',reward: 1000000,threshold: 1000000000 },
+      ],
+      activity: [
+        { id: 'daily_7',      name: 'Week Warrior',      desc: 'Maintain a 7-day daily streak',       reward: 10000,  threshold: 7 },
+        { id: 'daily_30',     name: 'Monthly Loyalty',   desc: 'Maintain a 30-day daily streak',      reward: 50000,  threshold: 30 },
+        { id: 'daily_100',    name: 'Century Dedication',desc: 'Maintain a 100-day daily streak',     reward: 250000, threshold: 100 },
+        { id: 'transactions_100', name: 'Active Trader', desc: 'Complete 100 transactions',           reward: 20000,  threshold: 100 },
+        { id: 'trades_50',    name: 'Trade Master',      desc: 'Complete 50 trades',                  reward: 50000,  threshold: 50 },
+      ],
+      economy: [
+        { id: 'first_purchase', name: 'First Purchase',  desc: 'Buy your first item from the shop',   reward: 1000,   threshold: 1 },
+        { id: 'first_property',name: 'Homeowner',        desc: 'Buy your first property',             reward: 25000,  threshold: 1 },
+        { id: 'first_pet',     name: 'Pet Lover',        desc: 'Adopt your first pet',                reward: 5000,   threshold: 1 },
+        { id: 'first_trade',   name: 'First Trade',      desc: 'Complete your first trade',           reward: 5000,   threshold: 1 },
+        { id: 'property_owner_3', name: 'Real Estate Mogul', desc: 'Own 3 properties at once',       reward: 100000, threshold: 3 },
+        { id: 'pet_max_level', name: 'Best Friend',      desc: 'Train a pet to max level',            reward: 50000,  threshold: 1 },
+      ],
+    },
+
+    // ── Random Economy Events ──
+    events: {
+      enabled: true,
+      checkIntervalMs: 600000,       // 10 minutes
+      types: {
+        treasure: { name: 'Treasure Hunt',    emoji: '🧭', chance: 0.15, minReward: 5000,  maxReward: 50000 },
+        boom:     { name: 'Market Boom',      emoji: '📈', chance: 0.10, multiplier: 0.8 },
+        crash:    { name: 'Market Crash',     emoji: '📉', chance: 0.05, multiplier: 1.5 },
+        bonus:    { name: 'Bonus Weekend',    emoji: '🎉', chance: 0.08, multiplier: 2.0 },
+      },
+    },
+
+    // ── Rob improvements ──
+    rob: {
+      baseSuccessRate: 0.35,
+      maxStealPercent: 0.25,
+      failFinePercent: 0.15,
+      cooldownMs: 14400000,         // 4 hours
+      protectionItems: ['personal_safe', 'insurance_policy', 'guard_dog'],
+      antiAbuseMinWallet: 1000,
+      shieldItemSuccessReduction: 0.5,
+    },
+
+    // ── Daily streaks ──
+    streaks: {
+      baseDaily: 1000,
+      streakBonusPerDay: 50,
+      milestone7:  { reward: 15000,  item: 'lucky_clover' },
+      milestone30: { reward: 75000,  item: 'lucky_charm' },
+      milestone100:{ reward: 250000, item: 'diamond_pickaxe' },
+    },
+
+    // ── Item rarities ──
+    itemRarities: {
+      common:    { name: 'Common',    emoji: '⬜', color: '#95A5A6', multiplier: 1.0 },
+      uncommon:  { name: 'Uncommon',  emoji: '🟩', color: '#2ECC71', multiplier: 1.5 },
+      rare:      { name: 'Rare',      emoji: '🟦', color: '#3498DB', multiplier: 2.5 },
+      epic:      { name: 'Epic',      emoji: '🟣', color: '#9B59B6', multiplier: 4.0 },
+      legendary: { name: 'Legendary', emoji: '🟡', color: '#F1C40F', multiplier: 7.0 },
+    },
   },
 
   shop: { },

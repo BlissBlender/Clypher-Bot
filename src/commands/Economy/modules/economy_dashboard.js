@@ -96,6 +96,21 @@ function buildSelectMenu(guildId) {
                 .setDescription('Change the currency name (e.g., coins, credits)')
                 .setValue('change_name')
                 .setEmoji('📝'),
+            new StringSelectMenuOptionBuilder()
+                .setLabel('Daily Amount')
+                .setDescription('Change the daily reward amount')
+                .setValue('set_daily')
+                .setEmoji('📆'),
+            new StringSelectMenuOptionBuilder()
+                .setLabel('Work Rewards')
+                .setDescription('Change work min/max rewards')
+                .setValue('set_work')
+                .setEmoji('💼'),
+            new StringSelectMenuOptionBuilder()
+                .setLabel('Cooldowns')
+                .setDescription('View and adjust economy cooldowns')
+                .setValue('view_cooldowns')
+                .setEmoji('⏱️'),
         );
 }
 
@@ -138,6 +153,131 @@ async function updateConfigFile(currencySymbol, currencyName) {
     }
 }
 
+async function handleSetDaily(selectInteraction, rootInteraction, guild, client) {
+    const modal = new ModalBuilder()
+        .setCustomId(`economy_set_daily_${guild.id}`)
+        .setTitle('Set Daily Amount');
+
+    const amountInput = new TextInputBuilder()
+        .setCustomId('daily_amount')
+        .setLabel('Daily Reward Amount')
+        .setStyle(TextInputStyle.Short)
+        .setValue(String(BotConfig.economy.dailyAmount || 1000))
+        .setPlaceholder('1000')
+        .setMinLength(1)
+        .setMaxLength(10)
+        .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+    await selectInteraction.showModal(modal);
+
+    const submitted = await selectInteraction
+        .awaitModalSubmit({
+            filter: i => i.customId === `economy_set_daily_${guild.id}` && i.user.id === selectInteraction.user.id,
+            time: 120000,
+        })
+        .catch(() => null);
+
+    if (!submitted) return;
+
+    const amount = parseInt(submitted.fields.getTextInputValue('daily_amount').trim(), 10);
+    if (isNaN(amount) || amount <= 0 || amount > 10000000) {
+        await replyUserError(submitted, { type: ErrorTypes.VALIDATION, message: 'Amount must be between 1 and 10,000,000.' });
+        return;
+    }
+
+    // Update in-memory config (Note: restart needed for permanent change)
+    BotConfig.economy.dailyAmount = amount;
+
+    await submitted.reply({
+        embeds: [successEmbed('Daily Amount Updated', `Daily reward changed to **${BotConfig.economy.currency.symbol}${amount.toLocaleString()}**.\n\n**Note:** The bot needs to be restarted for permanent changes.`)],
+        flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(`[ECONOMY_DASHBOARD] Daily amount changed to ${amount}`);
+    await refreshDashboard(rootInteraction, guild, client);
+}
+
+async function handleSetWork(selectInteraction, rootInteraction, guild, client) {
+    const modal = new ModalBuilder()
+        .setCustomId(`economy_set_work_${guild.id}`)
+        .setTitle('Set Work Rewards');
+
+    const minInput = new TextInputBuilder()
+        .setCustomId('work_min')
+        .setLabel('Minimum Work Pay')
+        .setStyle(TextInputStyle.Short)
+        .setValue(String(BotConfig.economy.workMin || 50))
+        .setPlaceholder('50')
+        .setMinLength(1)
+        .setMaxLength(10)
+        .setRequired(true);
+
+    const maxInput = new TextInputBuilder()
+        .setCustomId('work_max')
+        .setLabel('Maximum Work Pay')
+        .setStyle(TextInputStyle.Short)
+        .setValue(String(BotConfig.economy.workMax || 300))
+        .setPlaceholder('300')
+        .setMinLength(1)
+        .setMaxLength(10)
+        .setRequired(true);
+
+    modal.addComponents(
+        new ActionRowBuilder().addComponents(minInput),
+        new ActionRowBuilder().addComponents(maxInput),
+    );
+
+    await selectInteraction.showModal(modal);
+
+    const submitted = await selectInteraction
+        .awaitModalSubmit({
+            filter: i => i.customId === `economy_set_work_${guild.id}` && i.user.id === selectInteraction.user.id,
+            time: 120000,
+        })
+        .catch(() => null);
+
+    if (!submitted) return;
+
+    const workMin = parseInt(submitted.fields.getTextInputValue('work_min').trim(), 10);
+    const workMax = parseInt(submitted.fields.getTextInputValue('work_max').trim(), 10);
+
+    if (isNaN(workMin) || isNaN(workMax) || workMin <= 0 || workMax <= workMin) {
+        await replyUserError(submitted, { type: ErrorTypes.VALIDATION, message: 'Invalid values. Max must be greater than Min, and both must be positive.' });
+        return;
+    }
+
+    BotConfig.economy.workMin = workMin;
+    BotConfig.economy.workMax = workMax;
+
+    await submitted.reply({
+        embeds: [successEmbed('Work Rewards Updated', `Work pay range set to **${BotConfig.economy.currency.symbol}${workMin.toLocaleString()}** - **${BotConfig.economy.currency.symbol}${workMax.toLocaleString()}**.`)],
+        flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(`[ECONOMY_DASHBOARD] Work rewards changed to ${workMin}-${workMax}`);
+    await refreshDashboard(rootInteraction, guild, client);
+}
+
+async function handleViewCooldowns(selectInteraction, rootInteraction, guild) {
+    const cooldowns = BotConfig.economy.cooldowns || {};
+    const lines = Object.entries(cooldowns).map(([action, ms]) => {
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        return `**${action}:** ${timeStr} (${ms}ms)`;
+    });
+
+    const embed = createEmbed({
+        title: '⏱️ Economy Cooldowns',
+        description: lines.join('\n'),
+        color: 'info',
+        footer: 'Cooldowns are configurable in bot config.',
+    });
+
+    await selectInteraction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+}
+
 export default {
     prefixOnly: false,
     async execute(interaction, config, client) {
@@ -173,6 +313,15 @@ export default {
                             break;
                         case 'change_name':
                             await handleChangeName(selectInteraction, interaction, guild);
+                            break;
+                        case 'set_daily':
+                            await handleSetDaily(selectInteraction, interaction, guild, client);
+                            break;
+                        case 'set_work':
+                            await handleSetWork(selectInteraction, interaction, guild, client);
+                            break;
+                        case 'view_cooldowns':
+                            await handleViewCooldowns(selectInteraction, interaction, guild);
                             break;
                     }
                 } catch (error) {

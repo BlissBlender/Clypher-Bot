@@ -14,12 +14,29 @@ export const DEFAULT_ECONOMY_DATA = {
     lastGamble: 0,
     lastFish: 0,
     dailyStreak: 0,
+    highestStreak: 0,
     lastWeekly: 0,
     lastDeposit: 0,
     lastWithdraw: 0,
     inventory: {},
     upgrades: {},
-    cooldowns: {}
+    cooldowns: {},
+    // ── Transaction history ──
+    totalTransactions: 0,
+    totalEarned: 0,
+    totalSpent: 0,
+    lastTransactionId: 0,
+    // ── Properties ──
+    properties: [],
+    // ── Pets ──
+    pets: [],
+    // ── Achievements ──
+    achievements: [],
+    achievementPoints: 0,
+    // ── Trading stats ──
+    totalTrades: 0,
+    // ── Marketplace ──
+    activeListings: 0,
 };
 
 export const DEFAULT_GUILD_CONFIG = {
