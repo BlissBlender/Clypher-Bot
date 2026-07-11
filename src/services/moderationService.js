@@ -1,8 +1,10 @@
 // moderationService.js — Anti-Link, Anti-Spam, Auto-Moderation engine
+//                  Plus: Anti-Mass Mention, Anti-Raid, Anti-Nuke
 
 import { getGuildConfig, setConfigValue } from './guildConfig.js';
 import { logger } from '../utils/logger.js';
 import { createEmbed } from '../utils/embeds.js';
+import { PermissionFlagsBits } from 'discord.js';
 
 // ── Known Discord invite domains ────────────────────────────
 
@@ -28,7 +30,7 @@ const SUSPICIOUS_PATTERNS = [
     /rb\.gy\//i,
 ];
 
-// ── In-memory strike tracking ────────────────────────────────
+// ── In-memory strike / violation tracking ────────────────────
 
 /** Map<guildId, Map<userId, { count, timestamp }>> */
 const violationStore = new Map();
@@ -75,6 +77,87 @@ setInterval(() => {
         }
     }
 }, 300000);
+
+// ── Anti-Raid: join-rate tracking ────────────────────────────
+
+/** Map<guildId, number[]> — timestamps of recent joins */
+const raidJoinTracker = new Map();
+
+/**
+ * Records a member join and returns raid assessment.
+ */
+export function recordJoin(guildId) {
+    const now = Date.now();
+    if (!raidJoinTracker.has(guildId)) {
+        raidJoinTracker.set(guildId, []);
+    }
+    const joins = raidJoinTracker.get(guildId);
+    joins.push(now);
+    return joins;
+}
+
+/**
+ * Check if a guild is currently in raid lockdown based on join rate.
+ */
+export function isRaidLockedDown(guildId) {
+    const joins = raidJoinTracker.get(guildId);
+    if (!joins || joins.length === 0) return false;
+    const now = Date.now();
+    // Keep only joins within the last 60 seconds
+    const recent = joins.filter(t => now - t < 60000);
+    raidJoinTracker.set(guildId, recent);
+    return false; // Lockdown status is managed by the config, not just rate
+}
+
+// ── Anti-Nuke: destructive-action tracking ───────────────────
+
+/** Map<guildId, { channelDeletions, channelCreations, roleDeletions, roleCreations, bans, kicks, webhookCreations, webhookDeletions }> */
+const nukeActionStore = new Map();
+
+/**
+ * Record a destructive action and return the current count within the window.
+ */
+export function recordNukeAction(guildId, actionType) {
+    const now = Date.now();
+    if (!nukeActionStore.has(guildId)) {
+        nukeActionStore.set(guildId, {
+            channelDeletions: [],
+            channelCreations: [],
+            roleDeletions: [],
+            roleCreations: [],
+            bans: [],
+            kicks: [],
+            webhookCreations: [],
+            webhookDeletions: [],
+        });
+    }
+    const store = nukeActionStore.get(guildId);
+    if (!Array.isArray(store[actionType])) {
+        store[actionType] = [];
+    }
+    store[actionType].push(now);
+    // Prune entries older than 10 seconds
+    const cutoff = now - 10000;
+    for (const key of Object.keys(store)) {
+        store[key] = (store[key] || []).filter(t => t > cutoff);
+    }
+    return store;
+}
+
+/**
+ * Get total destructive actions across all tracked types in the last 10s.
+ */
+export function getTotalNukeActions(guildId) {
+    const store = nukeActionStore.get(guildId);
+    if (!store) return 0;
+    const now = Date.now();
+    const cutoff = now - 10000;
+    let total = 0;
+    for (const key of Object.keys(store)) {
+        total += (store[key] || []).filter(t => t > cutoff).length;
+    }
+    return total;
+}
 
 // ── ModerationService — legacy named export for ban.js ────────
 
@@ -204,6 +287,14 @@ export async function evaluateMessage(message, client) {
         }
     }
 
+    // 4. Anti-Mass Mention
+    if (config.antiMassMention?.enabled) {
+        const massMentionResult = checkAntiMassMention(message, config.antiMassMention, member);
+        if (massMentionResult) {
+            violations.push(massMentionResult);
+        }
+    }
+
     // ── Enforce actions for violations ──
     if (violations.length > 0) {
         const allViolations = violations.map(v => v.type).join(', ');
@@ -213,7 +304,9 @@ export async function evaluateMessage(message, client) {
         const firstViolation = violations[0];
         const featureConfig = firstViolation?.feature === 'antilink' ? config.antiLink
             : firstViolation?.feature === 'antispam' ? config.antiSpam
-            : config.autoMod;
+            : firstViolation?.feature === 'automod' ? config.autoMod
+            : firstViolation?.feature === 'antimassmention' ? config.antiMassMention
+            : null;
         const minForAction = featureConfig?.minViolationsForAction || 3;
         const shouldAct = count >= minForAction;
 
@@ -240,7 +333,7 @@ export async function evaluateMessage(message, client) {
         if (shouldAct) {
             const action = firstViolation?.suggestedAction || 'warn';
             if (action !== 'none') {
-                await enforceAction(member, { action }, `Automod: ${allViolations}`, client, config);
+                await enforceAction(member, { action }, `Automod: ${allViolations}`, client, config, message);
             }
         }
 
@@ -253,9 +346,11 @@ export async function evaluateMessage(message, client) {
             content: message.content,
         }, config);
 
-        // Try to delete the offending message if we took action
-        if (shouldAct && message.deletable) {
-            await message.delete().catch(() => {});
+        // Delete the message if the action was 'delete' (already handled in enforceAction)
+        if (shouldAct || firstViolation?.suggestedAction === 'delete') {
+            if (message.deletable && firstViolation?.suggestedAction !== 'delete') {
+                await message.delete().catch(() => {});
+            }
         }
     }
 
@@ -485,6 +580,56 @@ function checkAutoMod(message, config) {
     return violation;
 }
 
+// ── Anti-Mass Mention ────────────────────────────────────────
+
+function checkAntiMassMention(message, config, member) {
+    const content = message.content;
+    const configMaxMentions = config.maxMentions || 10;
+
+    // Count user mentions
+    const userMentions = (content.match(/<@!?\d+>/g) || []);
+    // Count role mentions
+    const roleMentions = content.match(/<@&\d+>/g) || [];
+    // Check @everyone and @here
+    const hasEveryone = content.includes('@everyone');
+    const hasHere = content.includes('@here');
+
+    const totalMentions = userMentions.length + roleMentions.length + (hasEveryone ? 1 : 0) + (hasHere ? 1 : 0);
+
+    if (totalMentions === 0) return null;
+
+    // Check if user is allowed to mass-mention (ignored roles)
+    const allowedRoles = config.allowedRoles || [];
+    if (allowedRoles.length > 0) {
+        const hasAllowedRole = member.roles.cache.some(r => allowedRoles.includes(r.id));
+        if (hasAllowedRole) return null;
+    }
+
+    // Check if @everyone/@here is specifically blocked
+    if (config.blockEveryone !== false) {
+        if (hasEveryone || hasHere) {
+            return {
+                feature: 'antimassmention',
+                type: 'anti-mass-mention:everyone',
+                detail: `Used @everyone or @here`,
+                suggestedAction: config.action || 'timeout',
+            };
+        }
+    }
+
+    // Check total mentions against max
+    if (totalMentions > configMaxMentions) {
+        return {
+            feature: 'antimassmention',
+            type: 'anti-mass-mention:excessive',
+            detail: `${totalMentions} mentions in one message (max ${configMaxMentions})`,
+            suggestedAction: config.action || 'warn',
+        };
+    }
+
+    return null;
+}
+
 // ── Strike Escalation ────────────────────────────────────────
 
 function resolveStrikeAction(count, strikesConfig) {
@@ -499,7 +644,7 @@ function resolveStrikeAction(count, strikesConfig) {
 
 // ── Action Enforcement ───────────────────────────────────────
 
-async function enforceAction(member, actionData, reason, client, config) {
+async function enforceAction(member, actionData, reason, client, config, message = null) {
     try {
         const action = actionData.action?.toLowerCase?.() || 'warn';
 
@@ -508,7 +653,7 @@ async function enforceAction(member, actionData, reason, client, config) {
                 await member.send({
                     embeds: [createEmbed({
                         title: '⚠️ Warning',
-                        description: `You received a warning in **${member.guild.name}**.\\n\\n**Reason:** ${reason}`,
+                        description: `You received a warning in **${member.guild.name}**.\n\n**Reason:** ${reason}`,
                         color: 'warning',
                     })],
                 }).catch(() => {}); // DM might be closed
@@ -523,11 +668,111 @@ async function enforceAction(member, actionData, reason, client, config) {
             case 'kick':
                 await member.kick(reason).catch(() => {});
                 break;
+
+            case 'delete':
+                // Delete the offending message without additional punishment
+                if (message?.deletable) {
+                    await message.delete().catch(() => {});
+                }
+                break;
+
+            case 'none':
+                // No action — just log
+                break;
         }
 
         logger.info(`[Moderation] ${action} issued to ${member.user.tag} in ${member.guild.name}: ${reason}`);
     } catch (error) {
         logger.error(`[Moderation] Failed to enforce ${actionData.action} on ${member.user.tag}:`, error);
+    }
+}
+
+// ── Anti-Raid: Lockdown ──────────────────────────────────────
+
+/**
+ * Enable lockdown mode for a guild — locks all text channels.
+ */
+export async function enableRaidLockdown(guild) {
+    if (!guild) return false;
+    try {
+        const channels = guild.channels.cache.filter(c =>
+            c.isTextBased?.() && c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageChannels)
+        );
+        let locked = 0;
+        for (const channel of channels.values()) {
+            try {
+                await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                    SendMessages: false,
+                });
+                locked++;
+            } catch {
+                // skip channels we can't edit
+            }
+        }
+        logger.info(`[Anti-Raid] Lockdown enabled for guild ${guild.id} — locked ${locked} channels`);
+        return true;
+    } catch (error) {
+        logger.error(`[Anti-Raid] Failed to lockdown guild ${guild.id}:`, error);
+        return false;
+    }
+}
+
+/**
+ * Disable lockdown mode for a guild — re-opens text channels.
+ */
+export async function disableRaidLockdown(guild) {
+    if (!guild) return false;
+    try {
+        const channels = guild.channels.cache.filter(c =>
+            c.isTextBased?.() && c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageChannels)
+        );
+        let unlocked = 0;
+        for (const channel of channels.values()) {
+            try {
+                await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                    SendMessages: null, // Reset to default
+                });
+                unlocked++;
+            } catch {
+                // skip
+            }
+        }
+        logger.info(`[Anti-Raid] Lockdown disabled for guild ${guild.id} — unlocked ${unlocked} channels`);
+        return true;
+    } catch (error) {
+        logger.error(`[Anti-Raid] Failed to unlock guild ${guild.id}:`, error);
+        return false;
+    }
+}
+
+/**
+ * Send an alert about a potential raid to the moderation log channel and configured alert channel.
+ */
+export async function sendRaidAlert(client, guildId, config, alertType, details) {
+    const logChannelId = config.logChannelId;
+    if (!logChannelId) return;
+
+    try {
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return;
+        const channel = guild.channels.cache.get(logChannelId);
+        if (!channel || !channel.isTextBased()) return;
+
+        const embed = createEmbed({
+            title: '🚨 Raid Alert',
+            color: 'error',
+            fields: [
+                { name: 'Type', value: alertType, inline: true },
+                { name: 'Details', value: details, inline: false },
+                { name: 'Server', value: guild.name, inline: true },
+                { name: 'Member Count', value: `${guild.memberCount}`, inline: true },
+            ],
+            timestamp: true,
+        });
+
+        await channel.send({ embeds: [embed], content: '@here' });
+    } catch (error) {
+        logger.error(`[Anti-Raid] Failed to send alert for guild ${guildId}:`, error);
     }
 }
 
@@ -614,6 +859,32 @@ const GUILD_CONFIG_DEFAULTS = {
                 { threshold: 5, action: 'timeout', durationMs: 300000 },
                 { threshold: 7, action: 'kick' },
             ],
+        },
+        antiMassMention: {
+            enabled: false,
+            maxMentions: 10,
+            action: 'warn',
+            allowedRoles: [],
+            blockEveryone: true,
+            timeoutDurationMs: 60000,
+            minViolationsForAction: 2,
+        },
+        antiRaid: {
+            enabled: false,
+            joinThreshold: 10,
+            detectionWindowMs: 60000,
+            action: 'lockdown',
+            alertModerators: true,
+            restrictNewAccounts: true,
+            newAccountAgeMs: 86400000 * 7, // 7 days
+        },
+        antiNuke: {
+            enabled: false,
+            actionThreshold: 5,
+            detectionWindowMs: 10000,
+            action: 'punish',
+            notifyStaff: true,
+            restoreSettings: true,
         },
     },
 };

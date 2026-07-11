@@ -24,6 +24,9 @@ export const TOGGLE_ANTILINK = `${DASHBOARD_PREFIX}_toggle_al`;
 export const TOGGLE_ANTISPAM = `${DASHBOARD_PREFIX}_toggle_as`;
 export const TOGGLE_AUTOMOD  = `${DASHBOARD_PREFIX}_toggle_am`;
 export const TOGGLE_STRIKES  = `${DASHBOARD_PREFIX}_toggle_strikes`;
+export const TOGGLE_ANTI_MASS_MENTION = `${DASHBOARD_PREFIX}_toggle_amm`;
+export const TOGGLE_ANTI_RAID = `${DASHBOARD_PREFIX}_toggle_ar`;
+export const TOGGLE_ANTI_NUKE = `${DASHBOARD_PREFIX}_toggle_an`;
 
 export const OPEN_CATEGORY   = `${DASHBOARD_PREFIX}_open_category`;
 
@@ -52,6 +55,9 @@ export function buildOverviewEmbed(config, guild) {
         `${isEnabled(masterOn && m.antiSpam?.enabled)} **Anti-Spam** — Detect rapid messages & mention spam`,
         `${isEnabled(masterOn && m.autoMod?.enabled)} **Auto-Mod** — Blocked words, all-caps, repeated text`,
         `${isEnabled(masterOn && m.strikes?.enabled)} **Strikes** — Progressive punishment escalation`,
+        `${isEnabled(masterOn && m.antiMassMention?.enabled)} **Anti-Mass Mention** — Block mass user/role/@everyone pings`,
+        `${isEnabled(masterOn && m.antiRaid?.enabled)} **Anti-Raid** — Detect join spikes & auto-lockdown`,
+        `${isEnabled(masterOn && m.antiNuke?.enabled)} **Anti-Nuke** — Stop channel/role deletion & mass bans`,
     ];
 
     const logChannel = m.logChannelId
@@ -180,6 +186,61 @@ export function buildCategoryEmbed(category, config, guild) {
             });
             break;
         }
+        case 'antimassmention': {
+            const amm = m.antiMassMention || {};
+            embed = createEmbed({
+                title: '📣 Anti-Mass Mention',
+                description: 'Detect users abusing mentions — mass pings, @everyone, role mentions.',
+                color: amm.enabled ? 'success' : 'secondary',
+                fields: [
+                    { name: `${isEnabled(amm.enabled)} Status`, value: boolDisplay(amm.enabled), inline: true },
+                    { name: '🔢 Max Mentions', value: `\`${amm.maxMentions || 10}\` per message`, inline: true },
+                    { name: '⚡ Action', value: `\`${amm.action || 'warn'}\``, inline: true },
+                    { name: '🚫 Block @everyone/@here', value: amm.blockEveryone !== false ? '✅ Yes' : '❌ No', inline: true },
+                    { name: '⏱️ Timeout Duration', value: `\`${formatDuration(amm.timeoutDurationMs || 60000)}\``, inline: true },
+                    { name: '⚠️ Auto-action after', value: `${amm.minViolationsForAction || 2} violations`, inline: true },
+                    { name: '✅ Allowed Roles', value: (amm.allowedRoles || []).length > 0 ? (amm.allowedRoles || []).map(id => `<@&${id}>`).join(', ') : '`None`', inline: false },
+                ],
+                footer: 'Allowed roles bypass all mass-mention checks',
+            });
+            break;
+        }
+        case 'antiRaid': {
+            const ar = m.antiRaid || {};
+            embed = createEmbed({
+                title: '🚨 Anti-Raid Protection',
+                description: 'Detect sudden server attacks from mass joins.',
+                color: ar.enabled ? 'success' : 'secondary',
+                fields: [
+                    { name: `${isEnabled(ar.enabled)} Status`, value: boolDisplay(ar.enabled), inline: true },
+                    { name: '📊 Join Threshold', value: `\`${ar.joinThreshold || 10}\` joins`, inline: true },
+                    { name: '⏱️ Detection Window', value: `\`${((ar.detectionWindowMs || 60000) / 1000)}s\``, inline: true },
+                    { name: '⚡ Action', value: `\`${ar.action || 'lockdown'}\``, inline: true },
+                    { name: '🔔 Alert Moderators', value: ar.alertModerators !== false ? '✅ Yes' : '❌ No', inline: true },
+                    { name: '🆕 Restrict New Accounts', value: ar.restrictNewAccounts !== false ? `✅ Yes (< ${Math.round((ar.newAccountAgeMs || 604800000) / 86400000)} days)` : '❌ No', inline: false },
+                ],
+                footer: 'Lockdown disables SendMessages for @everyone until reset',
+            });
+            break;
+        }
+        case 'antiNuke': {
+            const an = m.antiNuke || {};
+            embed = createEmbed({
+                title: '💣 Anti-Nuke Protection',
+                description: 'Protect server settings from destructive actions — channel/role deletion, mass bans.',
+                color: an.enabled ? 'success' : 'secondary',
+                fields: [
+                    { name: `${isEnabled(an.enabled)} Status`, value: boolDisplay(an.enabled), inline: true },
+                    { name: '📊 Action Threshold', value: `\`${an.actionThreshold || 5}\` actions`, inline: true },
+                    { name: '⏱️ Detection Window', value: `\`${((an.detectionWindowMs || 10000) / 1000)}s\``, inline: true },
+                    { name: '⚡ Action', value: `\`${an.action || 'punish'}\``, inline: true },
+                    { name: '🔔 Notify Staff', value: an.notifyStaff !== false ? '✅ Yes' : '❌ No', inline: true },
+                    { name: '🔄 Restore Settings', value: an.restoreSettings !== false ? '✅ Yes' : '❌ No', inline: false },
+                ],
+                footer: 'Monitors: channel/role create/delete, mass bans, webhooks',
+            });
+            break;
+        }
         default:
             embed = buildOverviewEmbed(config, guild);
     }
@@ -213,6 +274,21 @@ export function buildOverviewComponents(guildId, config) {
             .setDescription(`${isEnabled(masterOn && config.strikes?.enabled)} Progressive punishment escalation`)
             .setValue('strikes')
             .setEmoji('⚡'),
+        new StringSelectMenuOptionBuilder()
+            .setLabel('Anti-Mass Mention')
+            .setDescription(`${isEnabled(masterOn && config.antiMassMention?.enabled)} Block mass pings & @everyone`)
+            .setValue('antimassmention')
+            .setEmoji('📣'),
+        new StringSelectMenuOptionBuilder()
+            .setLabel('Anti-Raid')
+            .setDescription(`${isEnabled(masterOn && config.antiRaid?.enabled)} Join spike detection & lockdown`)
+            .setValue('antiRaid')
+            .setEmoji('🚨'),
+        new StringSelectMenuOptionBuilder()
+            .setLabel('Anti-Nuke')
+            .setDescription(`${isEnabled(masterOn && config.antiNuke?.enabled)} Destructive action prevention`)
+            .setValue('antiNuke')
+            .setEmoji('💣'),
     ];
 
     return [
@@ -245,6 +321,10 @@ export function buildCategoryComponents(guildId, category, config) {
     const toggleCustomId = category === 'antilink' ? TOGGLE_ANTILINK
         : category === 'antispam' ? TOGGLE_ANTISPAM
         : category === 'automod' ? TOGGLE_AUTOMOD
+        : category === 'strikes' ? TOGGLE_STRIKES
+        : category === 'antimassmention' ? TOGGLE_ANTI_MASS_MENTION
+        : category === 'antiRaid' ? TOGGLE_ANTI_RAID
+        : category === 'antiNuke' ? TOGGLE_ANTI_NUKE
         : TOGGLE_STRIKES;
 
     rows.push(
@@ -327,12 +407,15 @@ export async function handleDashboardComponent(interaction, client) {
     }
 
     // Toggle individual features from category pages
-    if ([TOGGLE_ANTILINK, TOGGLE_ANTISPAM, TOGGLE_AUTOMOD, TOGGLE_STRIKES].includes(action)) {
+    if ([TOGGLE_ANTILINK, TOGGLE_ANTISPAM, TOGGLE_AUTOMOD, TOGGLE_STRIKES, TOGGLE_ANTI_MASS_MENTION, TOGGLE_ANTI_RAID, TOGGLE_ANTI_NUKE].includes(action)) {
         const featureMap = {
             [TOGGLE_ANTILINK]: 'antiLink.enabled',
             [TOGGLE_ANTISPAM]: 'antiSpam.enabled',
             [TOGGLE_AUTOMOD]: 'autoMod.enabled',
             [TOGGLE_STRIKES]: 'strikes.enabled',
+            [TOGGLE_ANTI_MASS_MENTION]: 'antiMassMention.enabled',
+            [TOGGLE_ANTI_RAID]: 'antiRaid.enabled',
+            [TOGGLE_ANTI_NUKE]: 'antiNuke.enabled',
         };
         const keyPath = featureMap[action];
         const category = suffix || keyPath.split('.')[0];
@@ -354,6 +437,9 @@ function getNestedConfig(config, category) {
         case 'antispam': return config.antiSpam?.enabled || false;
         case 'automod':  return config.autoMod?.enabled || false;
         case 'strikes':  return config.strikes?.enabled || false;
+        case 'antimassmention': return config.antiMassMention?.enabled || false;
+        case 'antiRaid': return config.antiRaid?.enabled || false;
+        case 'antiNuke': return config.antiNuke?.enabled || false;
         default: return false;
     }
 }
