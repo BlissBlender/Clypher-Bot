@@ -6,8 +6,12 @@ import {
     ButtonStyle,
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    MessageFlags,
 } from 'discord.js';
-import { createEmbed } from '../../../utils/embeds.js';
+import { createEmbed, successEmbed } from '../../../utils/embeds.js';
 import { getModerationConfig, toggleModerationFeature, updateModerationSetting } from '../../../services/moderationService.js';
 
 // ── Custom ID constants ──────────────────────────────────────
@@ -29,6 +33,8 @@ export const TOGGLE_ANTI_RAID = `${DASHBOARD_PREFIX}_toggle_ar`;
 export const TOGGLE_ANTI_NUKE = `${DASHBOARD_PREFIX}_toggle_an`;
 
 export const OPEN_CATEGORY   = `${DASHBOARD_PREFIX}_open_category`;
+export const IGNORED_WORDS   = `${DASHBOARD_PREFIX}_ignored_words`;
+export const IGNORED_WORDS_MODAL = `${DASHBOARD_PREFIX}_ignored_words_modal`;
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -345,6 +351,20 @@ export function buildCategoryComponents(guildId, category, config) {
         ),
     );
 
+    // Auto-Mod specific: add Ignored Words management button
+    if (category === 'automod' && isFeatureOn) {
+        const capsConfig = config.autoMod?.antiCaps || {};
+        const wordCount = (capsConfig.ignoredWords || []).length;
+        rows.push(
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(customId(IGNORED_WORDS, guildId, 'automod'))
+                    .setLabel(`🙈 Ignored Words (${wordCount})`)
+                    .setStyle(ButtonStyle.Secondary),
+            ),
+        );
+    }
+
     return rows;
 }
 
@@ -386,6 +406,63 @@ export async function handleDashboardComponent(interaction, client) {
         const selected = interaction.values[0];
         const view = await buildModDashboardView(client, guildId, guild, 'category', selected);
         await interaction.update({ embeds: [view.embed], components: view.components });
+        return;
+    }
+
+    // ── Ignored Words button — show modal (no deferUpdate yet) ──
+    if (action === IGNORED_WORDS) {
+        const config = await getModerationConfig(client, guildId);
+        const currentWords = (config.autoMod?.antiCaps?.ignoredWords || []).join(', ');
+
+        const modal = new ModalBuilder()
+            .setCustomId(customId(IGNORED_WORDS_MODAL, guildId))
+            .setTitle('Manage Ignored Words (Anti-Caps)');
+
+        const wordsInput = new TextInputBuilder()
+            .setCustomId('ignored_words')
+            .setLabel('Words to ignore (comma-separated)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('USA, NASA, FBI, CIA, LOL, OMG')
+            .setValue(currentWords)
+            .setRequired(false)
+            .setMaxLength(1000);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(wordsInput));
+        await interaction.showModal(modal);
+
+        // Wait for the modal submission
+        try {
+            const modalSubmit = await interaction.awaitModalSubmit({
+                filter: (i) =>
+                    i.customId === customId(IGNORED_WORDS_MODAL, guildId) &&
+                    i.user.id === interaction.user.id,
+                time: 120_000,
+            });
+
+            const rawValue = modalSubmit.fields.getTextInputValue('ignored_words').trim();
+            const words = rawValue
+                ? rawValue.split(',').map(w => w.trim().toUpperCase()).filter(w => w.length > 0)
+                : [];
+
+            await updateModerationSetting(client, guildId, 'autoMod.antiCaps.ignoredWords', words);
+
+            const view = await buildModDashboardView(client, guildId, guild, 'category', 'automod');
+            await modalSubmit.update({
+                embeds: [view.embed],
+                components: view.components,
+            });
+
+            // Send a follow-up confirmation that auto-deletes
+            await modalSubmit.followUp({
+                embeds: [successEmbed('Ignored Words Updated',
+                    `Anti-Caps will now ignore **${words.length}** word(s): \`${words.join('`, `') || 'None'}\``
+                )],
+                flags: MessageFlags.Ephemeral,
+            });
+        } catch (err) {
+            // Modal timed out or user cancelled — do nothing
+            return;
+        }
         return;
     }
 
