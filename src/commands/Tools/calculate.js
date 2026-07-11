@@ -245,7 +245,7 @@ const BUTTON_TIMEOUT = 300000;
                                 await i.reply({
                                     content: "Failed to open calculator. Please try again.",
                                     flags: ["Ephemeral"],
-                                }).catch(console.error);
+                                }).catch(() => logger.error('Failed to defer update'));
                             }
                             return;
                         }
@@ -256,7 +256,7 @@ const BUTTON_TIMEOUT = 300000;
                             await i.followUp({
                                 content: "An error occurred while processing your request.",
                                 flags: ["Ephemeral"],
-                            }).catch(console.error);
+                            }).catch(() => logger.error('Failed to send followup'));
                         }
                     }
                 });
@@ -280,7 +280,7 @@ const BUTTON_TIMEOUT = 300000;
                                 content:
                                     "⏱️ This calculator has expired. Use the command again to perform more calculations.",
                             })
-                            .catch(console.error);
+                            .catch(() => logger.error('Failed to disable expired calculator buttons'));
                     } else {
                         const disabledRow = ActionRowBuilder.from(
                             row,
@@ -292,7 +292,7 @@ const BUTTON_TIMEOUT = 300000;
 
                         interaction
                             .editReply({ components: [disabledRow] })
-                            .catch(console.error);
+                            .catch(() => logger.error('Failed to disable calculator buttons'));
                     }
                 });
             } catch (error) {
