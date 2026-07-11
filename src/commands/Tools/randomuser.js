@@ -188,7 +188,7 @@ const collector = response.createMessageComponentCollector({ filter, time: 30000
                     ButtonBuilder.from(row.components[0]).setDisabled(true)
                 );
                 
-                interaction.editReply({ components: [disabledRow] }).catch(console.error);
+                interaction.editReply({ components: [disabledRow] }).catch(() => logger.error('Failed to disable randomuser button'));
             });
             
         } catch (error) {

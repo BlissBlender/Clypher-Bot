@@ -162,7 +162,7 @@ const BUTTON_TIMEOUT = 300000;
 
                         if (operation === "history") {
                             if (!i.deferred && !i.replied) {
-                                await i.deferUpdate().catch(console.error);
+                                await i.deferUpdate().catch(() => logger.error('Failed to defer update'));
                             }
 
                             const userHistory =
