@@ -111,9 +111,12 @@ async function awardRoleReward(guild, member, roleId, level) {
 
 async function sendLevelUpAnnouncement(guild, member, levelData, config) {
   try {
-    const levelUpChannel = config.levelUpChannel 
-      ? guild.channels.cache.get(config.levelUpChannel) 
-      : guild.systemChannel;
+    // Only send announcements if the leveling system is fully configured
+    if (!config.configured || !config.levelUpChannel) {
+      return;
+    }
+    
+    const levelUpChannel = guild.channels.cache.get(config.levelUpChannel);
     
     if (!levelUpChannel || !levelUpChannel.isTextBased()) {
       return;
