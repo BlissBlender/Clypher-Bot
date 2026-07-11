@@ -546,7 +546,15 @@ function checkAutoMod(message, config) {
 
     // Anti-CAPS
     if (config.antiCaps?.enabled && content.length >= (config.antiCaps.minLength || 8)) {
-        const letters = content.replace(/[^a-zA-Z]/g, '');
+        // Strip ignored words before checking caps (e.g. "USA", "NASA" should not trigger)
+        let textToCheck = content;
+        const ignoredWords = (config.antiCaps.ignoredWords || []).filter(w => w.length > 0);
+        for (const word of ignoredWords) {
+            // Case-insensitive removal of the whole word
+            textToCheck = textToCheck.replace(new RegExp(`\\b${escapeRegex(word)}\\b`, 'gi'), '');
+        }
+
+        const letters = textToCheck.replace(/[^a-zA-Z]/g, '');
         if (letters.length > 0) {
             const capsCount = letters.split('').filter(c => c === c.toUpperCase()).length;
             const capsPercent = (capsCount / letters.length) * 100;
@@ -844,6 +852,7 @@ const GUILD_CONFIG_DEFAULTS = {
                 minLength: 8,
                 capsThreshold: 70,
                 action: 'warn',
+                ignoredWords: [],
             },
             antiRepeatedText: {
                 enabled: false,

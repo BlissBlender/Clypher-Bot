@@ -164,6 +164,7 @@ export function buildCategoryEmbed(category, config, guild) {
                     { name: `${isEnabled(am.enabled)} Status`, value: boolDisplay(am.enabled), inline: true },
                     { name: '📝 Blocked Words', value: (am.blockedWords || []).length > 0 ? `\`${am.blockedWords.join('`, `')}\`` : '`None`', inline: false },
                     { name: '🔤 Caps Protection', value: caps.enabled ? `✅ ON — ${caps.minLength || 8}+ chars, ${caps.capsThreshold || 70}% caps, action: \`${caps.action || 'warn'}\`` : '❌ OFF', inline: false },
+                    { name: '🙈 Ignored Words', value: (caps.ignoredWords || []).length > 0 ? `\`${caps.ignoredWords.join('`, `')}\`` : '`None`', inline: false },
                     { name: '🔁 Repeated Text', value: repeat.enabled ? `✅ ON — ${repeat.maxConsecutiveChars || 8}+ consecutive chars, action: \`${repeat.action || 'warn'}\`` : '❌ OFF', inline: false },
                 ],
             });
