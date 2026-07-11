@@ -1,20 +1,12 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from 'discord.js';
 import { createEmbed } from '../../../utils/embeds.js';
-import { shopItems } from '../../../config/shop/items.js';
+import { shopItems, getRarityEmoji, getRarityColor, ITEM_CATEGORIES } from '../../../config/shop/items.js';
 import { logger } from '../../../utils/logger.js';
-
-const TYPE_EMOJIS = {
-  consumable: '🍯',
-  upgrade: '⚡',
-  tool: '⛏️',
-  role: '🎭',
-};
 
 export default {
     async execute(interaction, config, client) {
         try {
-            const TARGET_MAX_PAGES = 3;
-            const ITEMS_PER_PAGE = Math.max(1, Math.ceil(shopItems.length / TARGET_MAX_PAGES));
+            const ITEMS_PER_PAGE = 8;
             const totalPages = Math.ceil(shopItems.length / ITEMS_PER_PAGE);
             let currentPage = 1;
 
@@ -22,44 +14,68 @@ export default {
                 const startIndex = (page - 1) * ITEMS_PER_PAGE;
                 const pageItems = shopItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-                const fieldItems = pageItems.map(item => ({
-                    name: `${TYPE_EMOJIS[item.type] || '📦'} ${item.name} \`(${item.id})\``,
-                    value: `${item.description}\n💵 **Price:** $${item.price.toLocaleString()} \u2022 📂 **Type:** ${item.type}`,
-                    inline: false,
-                }));
+                const fieldItems = pageItems.map(item => {
+                    const rarityEmoji = getRarityEmoji(item.rarity);
+                    const cat = ITEM_CATEGORIES[item.category] || { emoji: '📦', name: 'Item' };
+                    return {
+                        name: `${rarityEmoji} ${item.name}`,
+                        value: [
+                            `*${item.description}*`,
+                            `💵 **${item.price.toLocaleString()}** CR \u2022 ${cat.emoji} ${cat.name} \u2022 ${rarityEmoji} ${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)}`,
+                            `\`/${'buy item_id:' + item.id + ' quantity:1'}\``,
+                        ].join('\n'),
+                        inline: false,
+                    };
+                });
 
                 return createEmbed({
-                    title: '🛒 Shop',
-                    description: 'Use `/buy item_id:<id> quantity:<amount>` to purchase an item.',
-                    color: 'money',
+                    title: '🛒 CHARON Marketplace',
+                    description: [
+                        'Welcome to the CHARON Economy Shop! Browse items by page.',
+                        '',
+                        '**Buy items:** `/buy item_id:<id> quantity:<amount>`',
+                        '**View inventory:** `/inventory`',
+                        '**Use items:** `/use item:<id>`',
+                    ].join('\n'),
+                    color: 'economy',
                     fields: [
                         {
-                            name: `📋 Items (Page ${page}/${totalPages})`,
-                            value: `\u200b`,
+                            name: `📋 Page ${page}/${totalPages} \u2022 ${shopItems.length} items`,
+                            value: '\u200b',
                             inline: false,
                         },
                         ...fieldItems,
                     ],
-                    footer: `Page ${page}/${totalPages} \u2022 ${shopItems.length} items total`,
+                    footer: `Page ${page}/${totalPages} • ${shopItems.length} items • CHARON Economy`,
                 });
             };
 
             const createShopComponents = (page) => {
-                if (totalPages <= 1) return [];
-                return [
-                    new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('shop_prev')
-                            .setLabel('⬅️ Previous')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(page === 1),
-                        new ButtonBuilder()
-                            .setCustomId('shop_next')
-                            .setLabel('Next ➡️')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(page === totalPages),
-                    ),
-                ];
+                const rows = [];
+                
+                // Pagination buttons
+                if (totalPages > 1) {
+                    rows.push(
+                        new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('shop_prev')
+                                .setLabel('⬅️ Previous')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(page === 1),
+                            new ButtonBuilder()
+                                .setCustomId('shop_index')
+                                .setLabel(`Page ${page}/${totalPages}`)
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(true),
+                            new ButtonBuilder()
+                                .setCustomId('shop_next')
+                                .setLabel('Next ➡️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(page === totalPages),
+                        ),
+                    );
+                }
+                return rows;
             };
 
             const message = await interaction.reply({

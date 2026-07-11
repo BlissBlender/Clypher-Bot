@@ -311,7 +311,7 @@ export const botConfig = {
       maxStealPercent: 0.25,
       failFinePercent: 0.15,
       cooldownMs: 14400000,         // 4 hours
-      protectionItems: ['personal_safe', 'insurance_policy', 'guard_dog'],
+      protectionItems: ['personal_safe', 'robbery_shield', 'insurance_policy', 'security_token', 'guard_dog', 'fortress_upgrade'],
       antiAbuseMinWallet: 1000,
       shieldItemSuccessReduction: 0.5,
     },
