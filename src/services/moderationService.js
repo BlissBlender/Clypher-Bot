@@ -30,12 +30,66 @@ const SUSPICIOUS_PATTERNS = [
     /rb\.gy\//i,
 ];
 
-// ── In-memory strike / violation tracking ────────────────────
+// ── Strike / violation tracking (in-memory cache backed by DB) ──
 
 /** Map<guildId, Map<userId, { count, timestamp }>> */
 const violationStore = new Map();
 
-function getUserViolations(guildId, userId) {
+/** Tracks which guilds have been loaded from DB */
+const loadedGuilds = new Set();
+
+function getViolationsKey(guildId) {
+    return `guild:${guildId}:moderation:violations`;
+}
+
+async function persistViolations(client, guildId) {
+    try {
+        const guildViolations = violationStore.get(guildId);
+        if (!guildViolations || guildViolations.size === 0) {
+            await client.db.delete(getViolationsKey(guildId)).catch(() => {});
+        } else {
+            // Convert Map to plain object for storage
+            const obj = {};
+            for (const [userId, entry] of guildViolations.entries()) {
+                obj[userId] = entry;
+            }
+            await client.db.set(getViolationsKey(guildId), obj);
+        }
+    } catch (error) {
+        logger.error(`[Moderation] Failed to persist violations for guild ${guildId}:`, error);
+    }
+}
+
+async function ensureViolationsLoaded(client, guildId) {
+    if (loadedGuilds.has(guildId)) return;
+    loadedGuilds.add(guildId);
+
+    try {
+        const stored = await client.db.get(getViolationsKey(guildId));
+        if (!stored || typeof stored !== 'object') return;
+
+        const now = Date.now();
+        const decayMs = 86400000; // 24h
+        const guildViolations = new Map();
+
+        for (const [userId, entry] of Object.entries(stored)) {
+            if (entry && typeof entry.count === 'number' && typeof entry.timestamp === 'number') {
+                // Skip expired entries
+                if (now - entry.timestamp > decayMs) continue;
+                guildViolations.set(userId, { count: entry.count, timestamp: entry.timestamp });
+            }
+        }
+
+        if (guildViolations.size > 0) {
+            violationStore.set(guildId, guildViolations);
+        }
+    } catch (error) {
+        logger.error(`[Moderation] Failed to load violations for guild ${guildId}:`, error);
+    }
+}
+
+async function getUserViolations(client, guildId, userId) {
+    await ensureViolationsLoaded(client, guildId);
     const guildViolations = violationStore.get(guildId);
     if (!guildViolations) return 0;
     const entry = guildViolations.get(userId);
@@ -43,7 +97,8 @@ function getUserViolations(guildId, userId) {
     return entry.count;
 }
 
-function incrementViolations(guildId, userId) {
+async function incrementViolations(client, guildId, userId) {
+    await ensureViolationsLoaded(client, guildId);
     if (!violationStore.has(guildId)) {
         violationStore.set(guildId, new Map());
     }
@@ -52,17 +107,23 @@ function incrementViolations(guildId, userId) {
     current.count += 1;
     current.timestamp = Date.now();
     guildViolations.set(userId, current);
+
+    // Persist to database
+    await persistViolations(client, guildId);
+
     return current.count;
 }
 
-function resetViolations(guildId, userId) {
+async function resetViolations(client, guildId, userId) {
+    await ensureViolationsLoaded(client, guildId);
     const guildViolations = violationStore.get(guildId);
     if (guildViolations) {
         guildViolations.delete(userId);
+        await persistViolations(client, guildId);
     }
 }
 
-/** Clean up stale entries every 5 minutes */
+/** Clean up stale entries every 5 minutes (in-memory only; DB cleaned on load) */
 setInterval(() => {
     const now = Date.now();
     const decayMs = 86400000; // 24h
@@ -298,7 +359,7 @@ export async function evaluateMessage(message, client) {
     // ── Enforce actions for violations ──
     if (violations.length > 0) {
         const allViolations = violations.map(v => v.type).join(', ');
-        const count = incrementViolations(message.guild.id, message.author.id);
+        const count = await incrementViolations(client, message.guild.id, message.author.id);
 
         // Determine per-feature minimum violations threshold
         const firstViolation = violations[0];

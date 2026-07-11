@@ -11,7 +11,58 @@ const EVENT_CONFIG = BotConfig.economy?.events || {};
 const CHECK_INTERVAL = EVENT_CONFIG.checkIntervalMs || 600000;
 const EVENT_TYPES = EVENT_CONFIG.types || {};
 
-// In-memory active events per guild
+// ── Database persistence ─────────────────────────────────
+function getEventsKey(guildId) {
+    // Note: uses underscore format to avoid parseKey conflict with economy user keys
+    // parseKey would interpret 'guild:{id}:economy:events' as type 'economy' with userId='events'
+    return `guild:${guildId}:economy_events`;
+}
+
+async function persistEvents(client, guildId) {
+    try {
+        const events = activeEvents.get(guildId) || [];
+        if (events.length === 0) {
+            await client.db.delete(getEventsKey(guildId)).catch(() => {});
+        } else {
+            await client.db.set(getEventsKey(guildId), events);
+        }
+    } catch (error) {
+        logger.error(`[EVENTS] Failed to persist events for guild ${guildId}:`, error);
+    }
+}
+
+async function loadEvents(client, guildId) {
+    try {
+        const stored = await client.db.get(getEventsKey(guildId));
+        if (!stored || !Array.isArray(stored) || stored.length === 0) return;
+
+        const now = Date.now();
+        const valid = stored.filter(e => now - e.startedAt < e.durationMs);
+
+        if (valid.length > 0) {
+            activeEvents.set(guildId, valid);
+            // Re-set expiry timers for restored events
+            for (const event of valid) {
+                const remaining = event.durationMs - (now - event.startedAt);
+                if (remaining > 0) {
+                    setTimeout(() => {
+                        const guildEvents = activeEvents.get(guildId) || [];
+                        activeEvents.set(guildId, guildEvents.filter(e => e.id !== event.id));
+                        persistEvents(client, guildId);
+                        logger.debug(`[EVENTS] Event ${event.id} expired in guild ${guildId}`);
+                    }, remaining);
+                }
+            }
+        } else {
+            // All stored events expired, clean up
+            await client.db.delete(getEventsKey(guildId)).catch(() => {});
+        }
+    } catch (error) {
+        logger.error(`[EVENTS] Failed to load events for guild ${guildId}:`, error);
+    }
+}
+
+// In-memory active events per guild (backed by database)
 const activeEvents = new Map();
 
 /**
@@ -26,6 +77,11 @@ export function getActiveGuildEvents(guildId) {
  */
 export async function checkAndTriggerEvent(client, guildId) {
     if (!EVENT_CONFIG.enabled) return null;
+
+    // Lazy-load events from DB if not in memory
+    if (!activeEvents.has(guildId)) {
+        await loadEvents(client, guildId);
+    }
 
     const currentEvents = activeEvents.get(guildId) || [];
     if (currentEvents.length > 0) return null; // Don't stack events
@@ -60,10 +116,14 @@ export async function triggerEvent(client, guildId, eventId) {
 
     activeEvents.set(guildId, [...(activeEvents.get(guildId) || []), event]);
 
+    // Persist to database immediately
+    await persistEvents(client, guildId);
+
     // Auto-expire after duration
     setTimeout(() => {
         const guildEvents = activeEvents.get(guildId) || [];
         activeEvents.set(guildId, guildEvents.filter(e => e.id !== event.id));
+        persistEvents(client, guildId);
         logger.debug(`[EVENTS] Event ${event.id} expired in guild ${guildId}`);
     }, event.durationMs);
 
